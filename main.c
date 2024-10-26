@@ -4,26 +4,26 @@
 #include <stdint.h>
 #include <assert.h>
 
-// typedef enum {
-// 	STRING,
-// 	NUMBER,
-// 	FUNCTION,
-// 	BOOLEAN,
-// 	NIL,
-// } TOKEN_TYPE;
-// 
-// typedef struct TOKEN {
-// 	char *value;
-// 	struct TOKEN *next;
-// 	TOKEN_TYPE type;
-// } TOKEN;
-// 
-// Token tokenize_bytecode(char *contents) {
-// 	assert(strlen(contents) != 0);
-// 
-// }
+typedef enum {
+	STRING,
+	NUMBER,
+	FUNCTION,
+	BOOLEAN,
+	NIL,
+} TOKEN_TYPE;
 
-uint8_t *read_file_bytes(char *file_name) {
+typedef struct TOKEN {
+	char *value;
+	struct TOKEN *next;
+	TOKEN_TYPE type;
+} TOKEN;
+
+typedef struct {
+	size_t length;
+	uint8_t *bytes;
+} FILE_BYTES;
+
+FILE_BYTES **read_file_bytes(char *file_name) {
 	assert(strlen(file_name) != 0);
 
 	FILE *fp;
@@ -48,15 +48,37 @@ uint8_t *read_file_bytes(char *file_name) {
 
 	buffer = calloc(length, sizeof(uint8_t));
 	if (buffer == NULL) {
-		fprintf(stderr, "error: malloc() failed\n");
+		fprintf(stderr, "error: calloc() failed\n");
 		return NULL;
 	}
 
 	fread(buffer, sizeof(uint8_t), length, fp);
 
+	FILE_BYTES **file_bytes = calloc(length, sizeof(FILE_BYTES *));
+	if (file_bytes == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		return NULL;
+	}
+
+	*file_bytes = calloc(length, sizeof(FILE_BYTES));
+	if (*file_bytes == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		return NULL;
+	}
+
+	(*file_bytes)->bytes = calloc(length, sizeof(uint8_t));
+	if ((*file_bytes)->bytes == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		return NULL;
+	}
+
+	memcpy((*file_bytes)->bytes, buffer, length);
+	(*file_bytes)->length = length;
+
+	free(buffer);
 	fclose(fp);
 
-	return buffer;
+	return file_bytes;
 }
 
 int main(int argc, char **argv) {
@@ -65,17 +87,15 @@ int main(int argc, char **argv) {
 		return -1;
 	}
 
-	uint8_t *contents = read_file_bytes(argv[1]);
+	FILE_BYTES **file_bytes = read_file_bytes(argv[1]);
 
-	printf("sizeof: %lu\n", sizeof(contents));
-
-	for (size_t i = 0; i < sizeof(contents); ++i) {
-		printf("%hhn\n", contents);
+	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
+		printf("%.2x ", (*file_bytes)->bytes[i]);
 	}
 
-	// Token *tokens = tokenize_bytecode(contents);
-
-	free(contents);
+	free((*file_bytes)->bytes);
+	free(*file_bytes);
+	free(file_bytes);
 
 	return 0;
 }
