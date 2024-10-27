@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <assert.h>
 
+#define GREEN "\033[0;32m"
+#define RED "\033[0;31m"
+#define RESET "\033[0m"
+
 typedef enum {
 	STRING,
 	NUMBER,
@@ -14,8 +18,8 @@ typedef enum {
 
 typedef struct TOKEN {
 	char *value;
-	struct TOKEN *next;
 	TOKEN_TYPE type;
+	struct TOKEN *next;
 } TOKEN;
 
 typedef struct {
@@ -38,19 +42,26 @@ uint8_t *poke_4_bytes(FILE_BYTES *file_bytes) {
 void parse_header(FILE_BYTES *file_bytes) {
 	size_t header_size = 12;
 
-	printf("Header block: ");
+	printf(GREEN "\nHeader block: " RESET);
 	for (size_t i = 0; i < header_size; ++i) {
-		printf("%.2x ", (*file_bytes).bytes[i]);
+		printf(RED "%.2x " RESET, (*file_bytes).bytes[i]);
 	}
 
-	printf("\nHeader signature: ");
-
+	printf(GREEN "\nHeader signature: " RESET);
 	uint8_t *header_signature = poke_4_bytes(file_bytes);
-
 	size_t header_signature_len = 4;
 	for (size_t i = 0; i < header_signature_len; ++i) {
-		printf("%.2x ", header_signature[i]);
+		printf(RED "%.2x " RESET, header_signature[i]);
 	}
+
+	printf(GREEN "\nVersion: " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len]);
+	printf(GREEN "\nFormat version (0=official version): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 1]);
+	printf(GREEN "\nEndianness: " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 2]);
+	printf(GREEN "\nsizeof(int): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 3]);
+	printf(GREEN "\nsizeof(size_t): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 4]);
+	printf(GREEN "\nsizeof(instruction): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 5]);
+	printf(GREEN "\nsizeof(lua_Number): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 6]);
+	printf(GREEN "\nIntegral flag (0=default): " RED "%.2x\n" RESET, (*file_bytes).bytes[header_signature_len + 7]);
 
 	free(header_signature);
 }
@@ -120,9 +131,11 @@ int main(int argc, char **argv) {
 	}
 
 	FILE_BYTES **file_bytes = read_file_bytes(argv[1]);
-	parse_header(*file_bytes);
+	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
+		printf(RED "%.2x " RESET, (*file_bytes)->bytes[i]);
+	}
 
-	printf("\n");
+	parse_header(*file_bytes);
 
 	free((*file_bytes)->bytes);
 	free(*file_bytes);
