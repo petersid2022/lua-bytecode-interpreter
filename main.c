@@ -23,6 +23,38 @@ typedef struct {
 	uint8_t *bytes;
 } FILE_BYTES;
 
+uint8_t *poke_4_bytes(FILE_BYTES *file_bytes) {
+	uint8_t *bytes = calloc(4, sizeof(uint8_t));
+	if (bytes == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		return NULL;
+	}
+
+	memcpy(bytes, file_bytes->bytes, 4);
+
+	return bytes;
+}
+
+void parse_header(FILE_BYTES *file_bytes) {
+	size_t header_size = 12;
+
+	printf("Header block: ");
+	for (size_t i = 0; i < header_size; ++i) {
+		printf("%.2x ", (*file_bytes).bytes[i]);
+	}
+
+	printf("\nHeader signature: ");
+
+	uint8_t *header_signature = poke_4_bytes(file_bytes);
+
+	size_t header_signature_len = 4;
+	for (size_t i = 0; i < header_signature_len; ++i) {
+		printf("%.2x ", header_signature[i]);
+	}
+
+	free(header_signature);
+}
+
 FILE_BYTES **read_file_bytes(char *file_name) {
 	assert(strlen(file_name) != 0);
 
@@ -88,10 +120,9 @@ int main(int argc, char **argv) {
 	}
 
 	FILE_BYTES **file_bytes = read_file_bytes(argv[1]);
+	parse_header(*file_bytes);
 
-	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
-		printf("%.2x ", (*file_bytes)->bytes[i]);
-	}
+	printf("\n");
 
 	free((*file_bytes)->bytes);
 	free(*file_bytes);
