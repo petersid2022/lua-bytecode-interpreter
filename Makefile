@@ -8,4 +8,7 @@ compile:
 	$(CC) $(CFLAGS) main.c
 
 debug:
-	gdb -out a.out
+	gdb -tui a.out
+
+luac:
+	gdb -tui lua-5.4.7/src/luac
