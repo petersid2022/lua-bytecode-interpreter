@@ -7,7 +7,7 @@ def binary_to_hex_grouped(binary_str: str):
         hex_str += f"{int(four_bit_chunk, 2):X}"
     return hex_str
 
-with open("instructions.txt") as f:
+with open("build/instructions.txt") as f:
     while True:
         chunk = f.read(32).strip()
         if not chunk:
