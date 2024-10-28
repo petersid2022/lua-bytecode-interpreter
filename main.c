@@ -76,7 +76,7 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 	fp = fopen(file_name, "rb");
 	if (fp == NULL) {
 		fprintf(stderr, "error: fopen() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	fseek(fp, 0L, SEEK_END);
@@ -84,7 +84,7 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 	length = ftell(fp);
 	if (length == 0) {
 		fprintf(stderr, "error: ftell() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	fseek(fp, 0L, SEEK_SET);
@@ -92,7 +92,7 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 	buffer = calloc(length, sizeof(uint8_t));
 	if (buffer == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	fread(buffer, sizeof(uint8_t), length, fp);
@@ -100,19 +100,19 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 	FILE_BYTES **file_bytes = calloc(length, sizeof(FILE_BYTES *));
 	if (file_bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	*file_bytes = calloc(length, sizeof(FILE_BYTES));
 	if (*file_bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	(*file_bytes)->bytes = calloc(length, sizeof(uint8_t));
 	if ((*file_bytes)->bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	memcpy((*file_bytes)->bytes, buffer, length);
@@ -131,6 +131,13 @@ int main(int argc, char **argv) {
 	}
 
 	FILE_BYTES **file_bytes = read_file_bytes(argv[1]);
+
+	// Bad way of checking if the file the user provided is a valid Lua bytecode
+	// binary but it is what it is. Basically, the first field of the header is
+	// the LUA_SIGNATURE i.e. "\x1bLua" So, I just check if the second byte of the
+	// file is equal to 'L'
+	assert((*file_bytes)->bytes[1] == '\x4c');
+
 	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
 		printf(RED "%.2x " RESET, (*file_bytes)->bytes[i]);
 	}
