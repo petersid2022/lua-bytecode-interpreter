@@ -1,7 +1,0 @@
-Lua 5.4 Bytecode Interpreter written in C.
-
-- Online Lua Bytecode Explorer: https://www.luac.nl/
-- Luac compiles Lua source code to Lua bytecode: https://www.lua.org/source/5.4/luac.c.html
-- The LuaVM opcodes: https://www.lua.org/source/5.4/lopcodes.h.html
-- Lua 5.3 Bytecode Reference: https://the-ravi-programming-language.readthedocs.io/en/latest/lua_bytecode_reference.html
-- A No-Frills Introduction to Lua 5.1 VM Instructions, by Kein-Hong Man: https://www.mcours.net/cours/pdf/hasclic3/hasssclic818.pdf
