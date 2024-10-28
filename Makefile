@@ -1,6 +1,11 @@
-default:
-	gcc -Wall -Wextra -fsanitize=address -ggdb main.c
-	./a.out luac.out
+CC = gcc
+CFLAGS = -Wall -Wextra -ggdb -fsanitize=address
+OUTFILE = luac.out
+
+all: compile
+
+compile:
+	$(CC) $(CFLAGS) main.c
+
 debug:
-	gcc -Wall -Wextra -ggdb main.c
-	gf2 ./a.out
+	gdb -out a.out
