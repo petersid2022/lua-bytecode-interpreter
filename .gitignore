@@ -1,1 +1,5 @@
 a.out
+lua-5.4.7/src/*.o
+lua-5.4.7/src/*.a
+lua-5.4.7/src/lua
+lua-5.4.7/src/luac
