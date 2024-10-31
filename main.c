@@ -24,10 +24,11 @@ typedef struct TOKEN {
 
 typedef struct {
 	size_t length;
+	size_t cursor;
 	uint8_t *bytes;
 } FILE_BYTES;
 
-uint8_t *poke_bytes(FILE_BYTES *file_bytes, uint8_t amount, uint8_t cursor) {
+uint8_t *poke_bytes(FILE_BYTES *file_bytes, uint8_t amount) {
 	assert(amount > 0);
 
 	uint8_t *bytes = calloc(amount, sizeof(uint8_t));
@@ -36,86 +37,150 @@ uint8_t *poke_bytes(FILE_BYTES *file_bytes, uint8_t amount, uint8_t cursor) {
 		return NULL;
 	}
 
-	memcpy(bytes, file_bytes->bytes + cursor, amount);
+	memcpy(bytes, file_bytes->bytes + file_bytes->cursor, amount);
+
+	file_bytes->cursor += amount;
 
 	return bytes;
 }
 
+uint8_t poke_next_byte(FILE_BYTES *file_bytes) {
+	uint8_t out = (*file_bytes).bytes[file_bytes->cursor];
+	file_bytes->cursor++;
+	return out;
+}
+
 void parse_header(FILE_BYTES *file_bytes) {
+	size_t header_signature_len = 4;
+	size_t luac_data_len = 6;
+	size_t luac_int_len = 8;
+	size_t luac_num_len = 8;
+
 	printf(GREEN "\n=======\n" RESET);
 
-	size_t header_size = 31;
-	printf(GREEN "Header block: " RESET);
-	for (size_t i = 0; i < header_size; ++i) {
-		printf(RED "%.2x " RESET, (*file_bytes).bytes[i]);
-	}
-
-	// dumpLiteral(D, LUA_SIGNATURE) AKA magic bytes
-	// sizeof(LUA_SIGNATURE) = 4 + 1 (null terminator, which we strip)
-	printf(GREEN "\nLua signature: " RESET);
-	size_t header_signature_len = 4;
-	uint8_t *header_signature = poke_bytes(file_bytes, header_signature_len, 0);
+	// dumpLiteral(D, LUA_SIGNATURE) (aka magic bytes) sizeof = 4 + 1
+	// since it's a string literal the last byte is a null terminator, which we strip
+	printf(GREEN "LUA_SIGNATURE: " RESET);
+	uint8_t *header_signature = poke_bytes(file_bytes, header_signature_len);
 	for (size_t i = 0; i < header_signature_len; ++i) {
-		printf(RED "%.2x " RESET, header_signature[i]);
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+
+		printf(RED "%.2x" RESET, header_signature[i]);
 	}
 
-	// dumpByte(D, LUAC_VERSION)
-	printf(GREEN "\nLuac Version: " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len]);
+	// dumpByte(D, LUAC_VERSION) used for detecting version mismatch
+	printf(GREEN "\nLUAC_VERSION: " RED "%.2x" RESET, poke_next_byte(file_bytes));
 
-	// dumpByte(D, LUAC_FORMAT) used for detecting format mismatching
-	printf(GREEN "\nLuac Format version (0=official version): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + 1]);
+	// dumpByte(D, LUAC_FORMAT) used for detecting format mismatch
+	printf(GREEN "\nLUAC_FORMAT version (0=official version): " RED "%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpLiteral(D, LUAC_DATA) "\x19\x93\r\n\x1a\n" used for error correction
-	printf(GREEN "\nLuac data : " RESET);
-	size_t luac_data_len = 6;
-	uint8_t *luac_data = poke_bytes(file_bytes, luac_data_len, header_signature_len + 2);
+	printf(GREEN "\nLUAC_DATA: " RESET);
+	uint8_t *luac_data = poke_bytes(file_bytes, luac_data_len);
 	for (size_t i = 0; i < luac_data_len; ++i) {
-		printf(RED "%.2x " RESET, luac_data[i]);
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+
+		printf(RED "%.2x" RESET, luac_data[i]);
 	}
 
-	printf(GREEN "\nsizeof(Instruction): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + luac_data_len + 2]);
-	printf(GREEN "\nsizeof(lua_Integer): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + luac_data_len + 3]);
-	printf(GREEN "\nsizeof(lua_Number): " RED "%.2x" RESET, (*file_bytes).bytes[header_signature_len + luac_data_len + 4]);
+	// check for any size mismatch
+	printf(GREEN "\nsizeof(Instruction): " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(lua_Integer): " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(lua_Number): " RED "%.2x" RESET, poke_next_byte(file_bytes));
 
-	// dumpInteger(D, LUAC_INT) 0x5678 used for detecting integer format mismatch
+	// dumpInteger(D, LUAC_INT) used for detecting integer format mismatch
 	printf(GREEN "\nLUAC_INT: " RESET);
-	size_t luac_int_len = 2;
-	uint8_t *luac_int = poke_bytes(file_bytes, luac_int_len, header_signature_len + luac_data_len + 5);
+	uint8_t *luac_int = poke_bytes(file_bytes, luac_int_len);
 	for (int i = luac_int_len - 1; i >= 0; i--) {
-		printf(RED "%.2x " RESET, luac_int[i]);
+		printf(RED "%.2x" RESET, luac_int[i]);
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
 	}
 
-	// Native endianness
-	printf(RED "(little-endian)" RESET);
 
-	// dumpInteger(D, LUAC_NUM) 0x4077280000000000 = 370.5 used for detecting float format mismatch
+	printf(RED "\t(little-endian)" RESET); // endianness is native to the platform
+
+	// dumpNumber(D, LUAC_NUM) used for detecting floating format mismatch
 	printf(GREEN "\nLUAC_NUM: " RESET);
-	size_t luac_num_len = 8;
-	uint8_t *luac_num = poke_bytes(file_bytes, luac_num_len, luac_num_len + header_signature_len + luac_data_len + 5);
+	uint8_t *luac_num = poke_bytes(file_bytes, luac_num_len);
 	for (int i = luac_num_len - 1; i >= 0; i--) {
-		printf(RED "%.2x " RESET, luac_num[i]);
+		printf(RED "%.2x" RESET, luac_num[i]);
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
 	}
 
-	// Native endianness
-	printf(RED "(little-endian)" RESET);
+	printf(RED "\t(little-endian)" RESET); // endianness is native to the platform
 
-	printf(GREEN "\nFinal size of the header: " RED "%lu bytes" RESET, luac_num_len + luac_num_len + header_signature_len + luac_data_len + 5);
-
-	// sizeof upvalues used for Lua closures
-	printf(GREEN "\nsizeof(upvalues): " RED "%.2x" RESET, (*file_bytes).bytes[header_size]);
+	// dumpByte(&D, f->sizeupvalues) used for Lua closures
+	printf(GREEN "\nf->sizeupvalues: " RED "%.2x" RESET, poke_next_byte(file_bytes));
 
 	printf(GREEN "\n=======\n" RESET);
 
-	free(header_signature);
 	free(luac_data);
 	free(luac_int);
 	free(luac_num);
+	free(header_signature);
 }
 
-// void parse_function(FILE_BYTES *file_bytes) {
-// 	// dumpFunction
-// 	// f->source (used for debug info) sizeof(f->source) is 8 and we are going to skip it
-// }
+void parse_function(FILE_BYTES *file_bytes) {
+	size_t proto_source_len = 8;
+	size_t proto_linedefined_len = 4;
+	size_t proto_lastlinedefined_len = 4;
+
+	/*
+	   dumpString(D, f->source);
+	   dumpInt(D, f->linedefined);
+	   dumpInt(D, f->lastlinedefined);
+	   dumpByte(D, f->numparams);
+	   dumpByte(D, f->is_vararg);
+	   dumpByte(D, f->maxstacksize);
+	   dumpCode(D, f);
+	   dumpConstants(D, f);
+	   dumpUpvalues(D, f);
+	   dumpProtos(D, f);
+	   dumpDebug(D, f);
+	   */
+
+
+	// dumpString(D, f->source) used for debugging
+	printf(GREEN "f->source: " RESET);
+	uint8_t *proto_source = poke_bytes(file_bytes, proto_source_len);
+	for (size_t i = 0; i < proto_source_len; ++i) {
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+		printf(RED "%.2x" RESET, proto_source[i]);
+	}
+
+	// dumpInt(D, f->linedefined) used for debugging
+	printf(GREEN "\nf->linedefined: " RESET);
+	uint8_t *proto_linedefined = poke_bytes(file_bytes, proto_linedefined_len);
+	for (size_t i = 0; i < proto_linedefined_len; ++i) {
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+		printf(RED "%.2x" RESET, proto_linedefined[i]);
+	}
+
+	// dumpInt(D, f->lastlinedefined) used for debugging
+	printf(GREEN "\nf->lastlinedefined: " RESET);
+	uint8_t *proto_lastlinedefined = poke_bytes(file_bytes, proto_lastlinedefined_len);
+	for (size_t i = 0; i < proto_lastlinedefined_len; ++i) {
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+		printf(RED "%.2x" RESET, proto_lastlinedefined[i]);
+	}
+
+	printf(GREEN "\nf->numparams: " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nf->is_vararg: " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nf->maxstacksize: " RED "%.2x" RESET, poke_next_byte(file_bytes));
+
+	printf(GREEN "\n=======\n" RESET);
+
+	free(proto_source);
+	free(proto_linedefined);
+	free(proto_lastlinedefined);
+}
 
 FILE_BYTES **read_file_bytes(char *file_name) {
 	assert(strlen(file_name) != 0);
@@ -168,11 +233,25 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 
 	memcpy((*file_bytes)->bytes, buffer, length);
 	(*file_bytes)->length = length;
+	(*file_bytes)->cursor = 0;
 
 	free(buffer);
 	fclose(fp);
 
 	return file_bytes;
+}
+
+void print_full_hex(FILE_BYTES **file_bytes) {
+	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
+		if (i % 2 == 0 && i != 0)
+			printf(" ");
+
+		if (i % 22 == 0 && i != 0)
+			printf("\n");
+
+
+		printf(RED "%.2x" RESET, (*file_bytes)->bytes[i]);
+	}
 }
 
 int main(int argc, char **argv) {
@@ -189,12 +268,9 @@ int main(int argc, char **argv) {
 	// file is equal to 'L'
 	assert((*file_bytes)->bytes[1] == '\x4c');
 
-	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
-		printf(RED "%.2x " RESET, (*file_bytes)->bytes[i]);
-	}
-	
-	// Stepping into luaU_dump
+	print_full_hex(file_bytes);
 	parse_header(*file_bytes);
+	parse_function(*file_bytes);
 
 	free((*file_bytes)->bytes);
 	free(*file_bytes);
