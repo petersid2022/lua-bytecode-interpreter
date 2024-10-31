@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra -O0 -ggdb3 -fsanitize=address
+CFLAGS = -std=c99 -pedantic -Wall -Wextra -O0 -ggdb3 -fsanitize=address
 OUTFILE = luac.out
 
 all: compile
