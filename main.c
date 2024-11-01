@@ -83,8 +83,7 @@ typedef enum {
 	OP_RETURN0,/*		return						*/
 	OP_RETURN1,/*	A	return R[A]					*/
 	OP_FORLOOP,/*	A Bx	update counters; if loop continues then pc-=Bx; */
-	OP_FORPREP,/*	A Bx	<check values and prepare counters>;
-			if not to run then pc+=Bx+1;			*/
+	OP_FORPREP,/*	A Bx	<check values and prepare counters>; if not to run then pc+=Bx+1; */
 	OP_TFORPREP,/*	A Bx	create upvalue for R[A + 3]; pc+=Bx		*/
 	OP_TFORCALL,/*	A C	R[A+4], ... ,R[A+3+C] := R[A](R[A+1], R[A+2]);	*/
 	OP_TFORLOOP,/*	A Bx	if R[A+2] ~= nil then { R[A]=R[A+2]; pc -= Bx }	*/
@@ -94,6 +93,16 @@ typedef enum {
 	OP_VARARGPREP,/*A	(adjust vararg parameters)			*/
 	OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 } OPCODES;
+
+typedef struct {
+	OPCODES opcode;
+	uint32_t value;
+} INSTRUCTION;
+
+typedef struct {
+	size_t code_size;
+	uint32_t *code;
+} PROTO; /* Function Prototypes */
 
 typedef enum {
 	STRING,
@@ -141,6 +150,30 @@ void skip_bytes(FILE_BYTES *file_bytes, size_t n) {
 	(*file_bytes).cursor += n;
 }
 
+INSTRUCTION **decode_instructions(PROTO *proto) {
+	size_t size = (*proto).code_size;
+	size_t num_of_instructions = size / 4; /* every instruction is 4 bytes long */
+
+	INSTRUCTION **intr = calloc(num_of_instructions, sizeof(INSTRUCTION*));
+	if (intr == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for (size_t i = 0; i < num_of_instructions; ++i) {
+		intr[i] = calloc(1, sizeof(INSTRUCTION));
+		if (intr[i] == NULL) {
+			fprintf(stderr, "error: calloc() failed\n");
+			exit(EXIT_FAILURE);
+		}
+
+		memcpy(&intr[i]->value, &proto->code[i * 4], sizeof(uint32_t));
+	}
+
+
+	return intr;
+}
+
 void parse_header(FILE_BYTES *file_bytes) {
 	size_t header_signature_len = 4;
 	size_t luac_data_len = 6;
@@ -186,7 +219,7 @@ void parse_header(FILE_BYTES *file_bytes) {
 	}
 
 
-	printf(RED "\t(little-endian)" RESET); // endianness is native to the platform
+	printf(RED "\t(big-endian)" RESET); // endianness is native to the platform but the hex code is dumped with big-endian order
 
 	// dumpNumber(D, LUAC_NUM) used for detecting floating format mismatch
 	printf(GREEN "\nLUAC_NUM: " RESET);
@@ -196,7 +229,7 @@ void parse_header(FILE_BYTES *file_bytes) {
 		printf(RED "%.2x" RESET, luac_num[i]);
 	}
 
-	printf(RED "\t(little-endian)" RESET); // endianness is native to the platform
+	printf(RED "\t(big-endian)" RESET); // endianness is native to the platform but the hex code is dumped with big-endian order
 
 	// dumpByte(&D, f->sizeupvalues) used for Lua closures
 	printf(GREEN "\nf->sizeupvalues: " RED "%.2x" RESET, poke_next_byte(file_bytes));
@@ -209,22 +242,29 @@ void parse_header(FILE_BYTES *file_bytes) {
 	free(header_signature);
 }
 
-// OPCODES *decode_opcodes(FILE_BYTES *bytes) {
-// 	uint8_t buffer = calloc(bytes->length, sizeof(uint8_t));
-// 	if (buffer == NULL) {
-// 		fprintf(stderr, "error: calloc() failed\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-// 
-// 	for (size_t i = 0; i < 32; ++i) {
-// 
-// 	}
-// }
+PROTO **parse_function(FILE_BYTES *file_bytes) {
+	PROTO **proto = calloc(file_bytes->length, sizeof(uint8_t));
+	if (proto == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
 
-void parse_function(FILE_BYTES *file_bytes) {
+	*proto = calloc(file_bytes->length, sizeof(PROTO));
+	if (*proto == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	(*proto)->code = calloc(file_bytes->length, sizeof(uint32_t));
+	if ((*proto)->code == NULL) {
+		fprintf(stderr, "error: calloc() failed\n");
+		exit(EXIT_FAILURE);
+	}
+
 	// TODO
 	// Get the string size of TString
 	// Parse dumpInt, dumpString, dumpSize
+	// Endianness
 
 	// ------------------------
 	//       dumpFunction
@@ -233,13 +273,20 @@ void parse_function(FILE_BYTES *file_bytes) {
 
 	// dumpInt(D, f->sizecode)
 	// skip_bytes(file_bytes, 8);
+	(*proto)->code_size = 40;
 
 	// dumpVector(D, f->code, f->sizecode);
 	printf(GREEN "f->code: " RESET);
-	uint8_t *proto_code = poke_bytes(file_bytes, 40);
-	for (size_t i = 0; i < 40; ++i) {
-		if (i % 2 == 0 && i != 0) printf(" ");
-		printf(RED "%.2x" RESET, proto_code[i]);
+	uint8_t *proto_code = poke_bytes(file_bytes, (*proto)->code_size);
+	for (size_t i = 0; i < (*proto)->code_size; i += 4) {
+		// Correcting for endianness
+		uint32_t instruction = (proto_code[i] << 24) |
+			(proto_code[i + 1] << 16) |
+			(proto_code[i + 2] << 8) |
+			(proto_code[i + 3]);
+		memcpy(&instruction, &proto_code[i], sizeof(uint32_t));
+		(*proto)->code[i / 4] = instruction;
+		printf(RED "%.2x%.2x%.2x%.2x " RESET, proto_code[i], proto_code[i + 1], proto_code[i + 2], proto_code[i + 3]);
 	}
 
 	// -----------------------
@@ -250,7 +297,7 @@ void parse_function(FILE_BYTES *file_bytes) {
 	// dumpByte(D, tt);
 	skip_bytes(file_bytes, 1);
 	// dumpString(D, tt);
-	skip_bytes(file_bytes, 1); // size
+	skip_bytes(file_bytes, 1); /* size */
 	// dumpVector(D, str, size);
 	printf(GREEN "\nstr: " RESET);
 	uint8_t *str = poke_bytes(file_bytes, 12);
@@ -274,6 +321,8 @@ void parse_function(FILE_BYTES *file_bytes) {
 	// free(proto_source);
 	// free(proto_linedefined);
 	// free(proto_lastlinedefined);
+
+	return proto;
 }
 
 FILE_BYTES **read_file_bytes(char *file_name) {
@@ -337,13 +386,8 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 
 void print_full_hex(FILE_BYTES **file_bytes) {
 	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
-		if (i % 2 == 0 && i != 0)
-			printf(" ");
-
-		if (i % 22 == 0 && i != 0)
-			printf("\n");
-
-
+		if (i % 2 == 0 && i != 0) printf(" ");
+		if (i % 22 == 0 && i != 0) printf("\n");
 		printf(RED "%.2x" RESET, (*file_bytes)->bytes[i]);
 	}
 }
@@ -363,12 +407,27 @@ int main(int argc, char **argv) {
 	assert((*file_bytes)->bytes[1] == '\x4c');
 
 	print_full_hex(file_bytes);
-	parse_header(*file_bytes);
-	parse_function(*file_bytes);
 
+	parse_header(*file_bytes);
+	PROTO **proto = parse_function(*file_bytes);
+
+	size_t num_of_instructions = (*proto)->code_size / 4;
+	INSTRUCTION **instruction = decode_instructions(*proto);
+
+	for (size_t i = 0; i < num_of_instructions; ++i) {
+		printf("[%lu] %.8x\n", i, instruction[i]->value);
+	}
+
+	for (size_t i = 0; i < num_of_instructions; ++i) {
+		free(instruction[i]);
+	}
+	free(instruction);
 	free((*file_bytes)->bytes);
 	free(*file_bytes);
 	free(file_bytes);
+	free((*proto)->code);
+	free(*proto);
+	free(proto);
 
 	return 0;
 }
