@@ -411,6 +411,14 @@ void print_full_hex(FILE_BYTES **file_bytes) {
 	}
 }
 
+void print_binary(unsigned long value) {
+	int width = 32;
+	for (int i = width - 1; i >= 0; --i) {
+		putchar((value & (1UL << i)) ? '1' : '0');
+	}
+	putchar('\n');
+}
+
 int main(int argc, char **argv) {
 	if (argc != 2) {
 		fprintf(stderr, "error: You need to specify a luac file\n");
@@ -433,9 +441,8 @@ int main(int argc, char **argv) {
 	size_t num_of_instructions = (*proto)->code_size / 4;
 	INSTRUCTION **instruction = decode_instructions(*proto);
 
-	// for (size_t i = 0; i < num_of_instructions; ++i) {
-	// 	printf("[%lu] %.8x\n", i, instruction[i]->value);
-	// }
+	for (size_t i = 0; i < num_of_instructions; ++i)
+		print_binary(instruction[i]->value);
 
 	for (size_t i = 0; i < num_of_instructions; ++i)
 		free(instruction[i]);
