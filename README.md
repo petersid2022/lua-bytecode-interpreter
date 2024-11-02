@@ -1,6 +1,6 @@
 # Lua 5.4 Bytecode Interpreter written in C
 
-To better understand how the `luac` compiler works, I found it invaluable to run and step through the compiler using a provided `main.lua` script (also included in this repository) inside `gdb`. Thus, I've included a slightly modified version of `lua-5.4.7` compiled with the `-ggdb` flag for debugging, with the default optimizations `-O2` disabled, which you can build using `make`. See: (debug\_luac.sh)[./debug\_luac.sh]
+To better understand how the `luac` compiler works, I found it invaluable to run and step through the compiler using a provided `main.lua` script (also included in this repository) inside `gdb`. Thus, I've included a slightly modified version of `lua-5.4.7` compiled with the `-ggdb` flag for debugging, with the default optimizations `-O2` disabled, which you can build using `make`. See: [debug\_luac.sh](./debug\_luac.sh)
 
 ## Resources
 * Online Lua Bytecode Explorer: https://www.luac.nl/
