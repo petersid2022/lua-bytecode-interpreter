@@ -167,7 +167,7 @@ INSTRUCTION **decode_instructions(PROTO *proto) {
 			exit(EXIT_FAILURE);
 		}
 
-		memcpy(&intr[i]->value, &proto->code[i * 4], sizeof(uint32_t));
+		memcpy(&intr[i]->value, &proto->code[i], sizeof(uint32_t));
 	}
 
 
@@ -187,52 +187,48 @@ void parse_header(FILE_BYTES *file_bytes) {
 	printf(GREEN "LUA_SIGNATURE: " RESET);
 	uint8_t *header_signature = poke_bytes(file_bytes, header_signature_len);
 	for (size_t i = 0; i < header_signature_len; ++i) {
-		if (i % 2 == 0 && i != 0) printf(" ");
+		if (i % 1 == 0 && i != 0) printf(" ");
 		printf(RED "%.2x" RESET, header_signature[i]);
 	}
 
 	// dumpByte(D, LUAC_VERSION) used for detecting version mismatch
-	printf(GREEN "\nLUAC_VERSION: " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nLUAC_VERSION: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpByte(D, LUAC_FORMAT) used for detecting format mismatch
-	printf(GREEN "\nLUAC_FORMAT version (0=official version): " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nLUAC_FORMAT VERSION (0=official version): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpLiteral(D, LUAC_DATA) "\x19\x93\r\n\x1a\n" used for error correction
 	printf(GREEN "\nLUAC_DATA: " RESET);
 	uint8_t *luac_data = poke_bytes(file_bytes, luac_data_len);
 	for (size_t i = 0; i < luac_data_len; ++i) {
-		if (i % 2 == 0 && i != 0) printf(" ");
+		if (i % 1 == 0 && i != 0) printf(" ");
 		printf(RED "%.2x" RESET, luac_data[i]);
 	}
 
 	// check for any size mismatch
-	printf(GREEN "\nsizeof(Instruction): " RED "%.2x" RESET, poke_next_byte(file_bytes));
-	printf(GREEN "\nsizeof(lua_Integer): " RED "%.2x" RESET, poke_next_byte(file_bytes));
-	printf(GREEN "\nsizeof(lua_Number): " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(Instruction): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(lua_Integer): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(lua_Number): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpInteger(D, LUAC_INT) used for detecting integer format mismatch
 	printf(GREEN "\nLUAC_INT: " RESET);
 	uint8_t *luac_int = poke_bytes(file_bytes, luac_int_len);
 	for (size_t i = 0; i < luac_int_len; ++i) {
-		if (i % 2 == 0 && i != 0) printf(" ");
+		if (i % 1 == 0 && i != 0) printf(" ");
 		printf(RED "%.2x" RESET, luac_int[i]);
 	}
-
-
-	printf(RED "\t(big-endian)" RESET); // endianness is native to the platform but the hex code is dumped with big-endian order
 
 	// dumpNumber(D, LUAC_NUM) used for detecting floating format mismatch
 	printf(GREEN "\nLUAC_NUM: " RESET);
 	uint8_t *luac_num = poke_bytes(file_bytes, luac_num_len);
 	for (size_t i = 0; i < luac_num_len; ++i) {
-		if (i % 2 == 0 && i != 0) printf(" ");
+		if (i % 1 == 0 && i != 0) printf(" ");
 		printf(RED "%.2x" RESET, luac_num[i]);
 	}
 
-	printf(RED "\t(big-endian)" RESET); // endianness is native to the platform but the hex code is dumped with big-endian order
-
-	// dumpByte(&D, f->sizeupvalues) used for Lua closures
-	printf(GREEN "\nf->sizeupvalues: " RED "%.2x" RESET, poke_next_byte(file_bytes));
+	// dumpByte(&D, f->sizeupvalues) upvalues are equivalent of C static variables
+	// Used for Lua closures. READ: https://www.lua.org/pil/27.3.3.html
+	printf(GREEN "\nsizeof(upvalues) (C API): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	printf(GREEN "\n=======\n" RESET);
 
@@ -261,32 +257,52 @@ PROTO **parse_function(FILE_BYTES *file_bytes) {
 		exit(EXIT_FAILURE);
 	}
 
-	// TODO
-	// Get the string size of TString
-	// Parse dumpInt, dumpString, dumpSize
-	// Endianness
-
 	// ------------------------
 	//       dumpFunction
 	// ------------------------
-	skip_bytes(file_bytes, 16);
+	// dumpSize(D, sizeof(f->source))
+	uint8_t sizesource_x = poke_next_byte(file_bytes);
+	uint8_t str_size = sizesource_x & ~0x80; /* dumpSize marks the last byte using |= 0x80 */
+	printf(GREEN "sizeof(f->source): " RED "0x%.2x" RESET, sizesource_x);
+
+	// dumpString(D, f->source) used for debug information
+	printf(GREEN "\nf->source: " RESET);
+	uint8_t *proto_source = poke_bytes(file_bytes, (int)str_size - 1); /* @main.lua */
+	for (int i = 0; i < (int)str_size - 1; ++i) {
+		if (i % 1 == 0 && i != 0) printf(" ");
+		printf(RED "%.2x" RESET, proto_source[i]);
+	}
+
+	// dumpInt(D, f->linedefined)
+	skip_bytes(file_bytes, 1);
+
+	// dumpInt(D, f->lastlinedefined)
+	skip_bytes(file_bytes, 1);
+
+	// dumpByte(D, f->numparams)
+	printf(GREEN "\nf->numparams: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+
+	// dumpByte(D, f->is_vararg)
+	printf(GREEN "\nf->is_vararg: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+
+	// dumpByte(D, f->maxstacksize)
+	printf(GREEN "\nf->maxstacksize: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpInt(D, f->sizecode)
-	// skip_bytes(file_bytes, 8);
-	(*proto)->code_size = 40;
+	uint8_t sizecode_x = poke_next_byte(file_bytes);
+	uint8_t proto_sizecode = sizecode_x & ~0x80; /* dumpSize marks the last byte using |= 0x80 */
+	printf(GREEN "\nf->sizecode: " RED "0x%.2x" RESET, sizecode_x);
+	(*proto)->code_size = (int)proto_sizecode * 4; /* 4 bytes is the size of each Instruction */
 
 	// dumpVector(D, f->code, f->sizecode);
-	printf(GREEN "f->code: " RESET);
+	printf(GREEN "\nInstructions: " RESET);
 	uint8_t *proto_code = poke_bytes(file_bytes, (*proto)->code_size);
 	for (size_t i = 0; i < (*proto)->code_size; i += 4) {
-		// Correcting for endianness
-		uint32_t instruction = (proto_code[i] << 24) |
-			(proto_code[i + 1] << 16) |
-			(proto_code[i + 2] << 8) |
-			(proto_code[i + 3]);
+		uint32_t instruction = proto_code[i] | proto_code[i + 1] | proto_code[i + 2] | proto_code[i + 3];
 		memcpy(&instruction, &proto_code[i], sizeof(uint32_t));
 		(*proto)->code[i / 4] = instruction;
-		printf(RED "%.2x%.2x%.2x%.2x " RESET, proto_code[i], proto_code[i + 1], proto_code[i + 2], proto_code[i + 3]);
+		if (i % 1 == 0 && i != 0) printf(" ");
+		printf(RED "%.8x" RESET, instruction);
 	}
 
 	// -----------------------
@@ -294,16 +310,19 @@ PROTO **parse_function(FILE_BYTES *file_bytes) {
 	// -----------------------
 	// dumpInt(D, n);
 	skip_bytes(file_bytes, 8);
+
 	// dumpByte(D, tt);
 	skip_bytes(file_bytes, 1);
+
 	// dumpString(D, tt);
 	skip_bytes(file_bytes, 1); /* size */
+
 	// dumpVector(D, str, size);
 	printf(GREEN "\nstr: " RESET);
 	uint8_t *str = poke_bytes(file_bytes, 12);
 	for (size_t i = 0; i < 12; ++i) {
 		// if (i % 2 == 0 && i != 0) printf(" ");
-		// printf(RED "%.2x" RESET, str[i]);
+		// printf(RED "0x%.2x" RESET, str[i]);
 		printf(RED "%c" RESET, str[i]);
 	}
 
@@ -318,7 +337,7 @@ PROTO **parse_function(FILE_BYTES *file_bytes) {
 
 	free(str);
 	free(proto_code);
-	// free(proto_source);
+	free(proto_source);
 	// free(proto_linedefined);
 	// free(proto_lastlinedefined);
 
@@ -387,7 +406,7 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 void print_full_hex(FILE_BYTES **file_bytes) {
 	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
 		if (i % 2 == 0 && i != 0) printf(" ");
-		if (i % 22 == 0 && i != 0) printf("\n");
+		if (i % 16 == 0 && i != 0) printf("\n");
 		printf(RED "%.2x" RESET, (*file_bytes)->bytes[i]);
 	}
 }
@@ -414,17 +433,19 @@ int main(int argc, char **argv) {
 	size_t num_of_instructions = (*proto)->code_size / 4;
 	INSTRUCTION **instruction = decode_instructions(*proto);
 
-	for (size_t i = 0; i < num_of_instructions; ++i) {
-		printf("[%lu] %.8x\n", i, instruction[i]->value);
-	}
+	// for (size_t i = 0; i < num_of_instructions; ++i) {
+	// 	printf("[%lu] %.8x\n", i, instruction[i]->value);
+	// }
 
-	for (size_t i = 0; i < num_of_instructions; ++i) {
+	for (size_t i = 0; i < num_of_instructions; ++i)
 		free(instruction[i]);
-	}
+
 	free(instruction);
+
 	free((*file_bytes)->bytes);
 	free(*file_bytes);
 	free(file_bytes);
+
 	free((*proto)->code);
 	free(*proto);
 	free(proto);
