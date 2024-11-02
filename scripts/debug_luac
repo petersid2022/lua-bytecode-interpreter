@@ -1,4 +1,0 @@
-#!/bin/sh
-
-rm luac.out
-gdb -tui lua-5.4.7/src/luac
