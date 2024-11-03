@@ -1,5 +1,7 @@
-#ifndef OPCODES_H_
-#define OPCODES_H_
+#ifndef INSTRUCTIONS_H_
+#define INSTRUCTIONS_H_
+
+#include "file.h"
 
 typedef enum {
 	OP_MOVE,/*	A B	R[A] := R[B]					*/
@@ -87,4 +89,22 @@ typedef enum {
 	OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 } OPCODES;
 
-#endif // OPCODES_H_
+/* Instructions for the Lua Virtual Machine
+ * All instructions are unsigned 32-bit integers.
+ * */
+typedef struct {
+	OPCODES opcode;
+	uint32_t value;
+	char *format;
+} INSTRUCTION; /* See lopcodes.h on how this is implemented */
+
+typedef struct {
+	size_t code_size;
+	uint32_t *code;
+} PROTO; /* Function Prototypes */
+
+PROTO **parse_function(FILE_BYTES *file_bytes);
+void parse_header(FILE_BYTES *file_bytes);
+INSTRUCTION **decode_instructions(PROTO *proto);
+
+#endif // INSTRUCTIONS_H_
