@@ -31,11 +31,6 @@ int main(int argc, char **argv) {
 	size_t num_of_instructions = (*proto)->code_size / 4;
 	INSTRUCTION **instruction = decode_instructions(*proto);
 
-	for (size_t i = 0; i < num_of_instructions; ++i) {
-		print_binary(instruction[i]->value, 32);
-		print_binary(instruction[i]->opcode, 7);
-	}
-
 	for (size_t i = 0; i < num_of_instructions; ++i)
 		free(instruction[i]);
 

@@ -34,10 +34,8 @@ void skip_bytes(FILE_BYTES *file_bytes, size_t n) {
 }
 
 void print_binary(unsigned long value, int width) {
-	for (int i = width - 1; i >= 0; --i) {
+	for (int i = 0; i < width; ++i)
 		putchar((value & (1UL << i)) ? '1' : '0');
-	}
-	putchar('\n');
 }
 
 void print_full_hex(FILE_BYTES **file_bytes) {
