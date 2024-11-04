@@ -1,13 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 #include <assert.h>
 
-#include "colors.h"
-#include "instructions.h"
-#include "utils.h"
 #include "file.h"
+#include "utils.h"
+#include "instructions.h"
 
 int main(int argc, char **argv) {
 	if (argc != 2) {

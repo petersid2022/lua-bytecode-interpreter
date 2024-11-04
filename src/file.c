@@ -4,14 +4,14 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "utils.h"
+#include "file.h"
 
-FILE_BYTES **read_file_bytes(char *file_name) {
+FILE_BYTES **read_file_bytes(const char *file_name) {
 	assert(strlen(file_name) != 0);
 
 	FILE *fp;
-	size_t length;
 	uint8_t *buffer;
+	long int length;
 
 	fp = fopen(file_name, "rb");
 	if (fp == NULL) {
@@ -29,34 +29,34 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 
 	fseek(fp, 0L, SEEK_SET);
 
-	buffer = calloc(length, sizeof(uint8_t));
+	buffer = calloc((size_t)length, sizeof(uint8_t));
 	if (buffer == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	fread(buffer, sizeof(uint8_t), length, fp);
+	fread(buffer, sizeof(uint8_t), (size_t)length, fp);
 
-	FILE_BYTES **file_bytes = calloc(length, sizeof(FILE_BYTES *));
+	FILE_BYTES **file_bytes = calloc((size_t)length, sizeof(FILE_BYTES *));
 	if (file_bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	*file_bytes = calloc(length, sizeof(FILE_BYTES));
+	*file_bytes = calloc((size_t)length, sizeof(FILE_BYTES));
 	if (*file_bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	(*file_bytes)->bytes = calloc(length, sizeof(uint8_t));
+	(*file_bytes)->bytes = calloc((size_t)length, sizeof(uint8_t));
 	if ((*file_bytes)->bytes == NULL) {
 		fprintf(stderr, "error: calloc() failed\n");
 		exit(EXIT_FAILURE);
 	}
 
-	memcpy((*file_bytes)->bytes, buffer, length);
-	(*file_bytes)->length = length;
+	memcpy((*file_bytes)->bytes, buffer, (size_t)length);
+	(*file_bytes)->length = (size_t)length;
 	(*file_bytes)->cursor = 0;
 
 	free(buffer);
@@ -64,4 +64,3 @@ FILE_BYTES **read_file_bytes(char *file_name) {
 
 	return file_bytes;
 }
-

@@ -5,9 +5,10 @@
 #include <stdio.h>
 
 #include "file.h"
+#include "utils.h"
 #include "colors.h"
 
-uint8_t *poke_bytes(FILE_BYTES *file_bytes, uint8_t amount) {
+uint8_t *poke_bytes(FILE_BYTES *file_bytes, const size_t amount) {
 	assert(amount > 0);
 
 	uint8_t *bytes = calloc(amount, sizeof(uint8_t));
@@ -29,16 +30,16 @@ uint8_t poke_next_byte(FILE_BYTES *file_bytes) {
 	return out;
 }
 
-void skip_bytes(FILE_BYTES *file_bytes, size_t n) {
+void skip_bytes(FILE_BYTES *file_bytes, const size_t n) {
 	(*file_bytes).cursor += n;
 }
 
-void print_binary(unsigned long value, int width) {
+void print_binary(const unsigned long value, const int width) {
 	for (int i = 0; i < width; ++i)
 		putchar((value & (1UL << i)) ? '1' : '0');
 }
 
-void print_full_hex(FILE_BYTES **file_bytes) {
+void print_full_hex(FILE_BYTES *const *file_bytes) {
 	for (size_t i = 0; i < (*file_bytes)->length; ++i) {
 		if (i % 2 == 0 && i != 0) printf(" ");
 		if (i % 16 == 0 && i != 0) printf("\n");

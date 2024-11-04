@@ -103,8 +103,12 @@ typedef struct {
 	uint32_t *code;
 } PROTO; /* Function Prototypes */
 
-PROTO **parse_function(FILE_BYTES *file_bytes);
 void parse_header(FILE_BYTES *file_bytes);
+PROTO **parse_function(FILE_BYTES *file_bytes);
 INSTRUCTION **decode_instructions(PROTO *proto);
+
+void dump_upvalues(FILE_BYTES *file_bytes);
+void dump_constants(FILE_BYTES *file_bytes);
+void dump_function(FILE_BYTES *file_bytes, PROTO **proto);
 
 #endif // INSTRUCTIONS_H_

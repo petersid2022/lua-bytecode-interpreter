@@ -88,7 +88,7 @@ void parse_header(FILE_BYTES *file_bytes) {
 
 	// dumpByte(&D, f->sizeupvalues) upvalues are equivalent of C static variables
 	// Used for Lua closures. READ: https://www.lua.org/pil/27.3.3.html
-	printf(GREEN "\nsizeof(upvalues) (C API): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nsizeof(upvalues): " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	printf(GREEN "\n=======\n" RESET);
 
@@ -98,38 +98,38 @@ void parse_header(FILE_BYTES *file_bytes) {
 	free(header_signature);
 }
 
-void dumpFunction(FILE_BYTES *file_bytes, PROTO **proto) {
+void dump_function(FILE_BYTES *file_bytes, PROTO **proto) {
 	// Get filename's length
-	uint8_t file_name_len = poke_next_byte(file_bytes) & ~0x80; /* dumpSize marks the last byte using |= 0x80 */
+	int file_name_len = poke_next_byte(file_bytes) & ~0x80; /* dumpSize marks the last byte using |= 0x80 */
 
 	// dumpString(D, f->source) used for debug information
-	printf(GREEN "f->source: " RESET);
-	uint8_t *file_name = poke_bytes(file_bytes, (int)file_name_len - 1); /* @main.lua */
-	for (int i = 1; i < (int)file_name_len - 1; ++i) {
+	printf(GREEN "proto->source: " RESET);
+	uint8_t *file_name = poke_bytes(file_bytes, (size_t)(file_name_len - 1)); /* @main.lua */
+	for (size_t i = 1; i < (size_t)(file_name_len - 1); ++i) {
 		printf(RED "%c" RESET, file_name[i]);
 	}
 
 	// dumpInt(D, f->linedefined)
-	printf(GREEN "\nf->linedefined: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nproto->linedefined: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpInt(D, f->lastlinedefined)
-	printf(GREEN "\nf->lastlinedefined: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nproto->lastlinedefined: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpByte(D, f->numparams)
-	printf(GREEN "\nf->numparams: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nproto->numparams: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpByte(D, f->is_vararg)
-	printf(GREEN "\nf->is_vararg: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nproto->is_vararg: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpByte(D, f->maxstacksize)
-	printf(GREEN "\nf->maxstacksize: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
+	printf(GREEN "\nproto->maxstacksize: " RED "0x%.2x" RESET, poke_next_byte(file_bytes));
 
 	// dumpInt(D, f->sizecode)
-	uint8_t sizecode = poke_next_byte(file_bytes) & ~0x80;
-	(*proto)->code_size = (int)sizecode * 4; /* 4 bytes is the size of each Instruction */
+	int sizecode = poke_next_byte(file_bytes) & ~0x80;
+	(*proto)->code_size = (size_t)sizecode * 4; /* 4 bytes is the size of each Instruction */
 
 	// dumpVector(D, f->code, f->sizecode);
-	printf(GREEN "\nf->code: " RESET);
+	printf(GREEN "\nproto->code: " RESET);
 	uint8_t *code = poke_bytes(file_bytes, (*proto)->code_size);
 	for (size_t i = 0; i < (*proto)->code_size; i += 4) {
 		uint32_t instruction = (uint32_t)code[i] |
@@ -151,12 +151,12 @@ void dumpFunction(FILE_BYTES *file_bytes, PROTO **proto) {
 	free(file_name);
 }
 
-void dumpConstants(FILE_BYTES *file_bytes) {
+void dump_constants(FILE_BYTES *file_bytes) {
 	/* dumpInt(D, f->sizek) */
-	uint8_t sizek = poke_next_byte(file_bytes) & ~0x80;
+	int sizek = poke_next_byte(file_bytes) & ~0x80;
 
-	for (size_t i = 0; i < sizek; ++i) {
-		uint8_t size;
+	for (size_t i = 0; i < (size_t)sizek; ++i) {
+		int size;
 		uint8_t *lua_string, *lua_int, *lua_num;
 		uint8_t tt = poke_next_byte(file_bytes); /* type tag of a TValue */
 
@@ -203,18 +203,18 @@ void dumpConstants(FILE_BYTES *file_bytes) {
 	printf(GREEN "\n=======\n" RESET);
 }
 
-void dumpUpvalues(FILE_BYTES *file_bytes) {
+void dump_upvalues(FILE_BYTES *file_bytes) {
 	/* dumpInt(D, f->sizeupvalues) */
-	uint8_t sizek = poke_next_byte(file_bytes) & ~0x80;
+	int sizek = poke_next_byte(file_bytes) & ~0x80;
 	for (int i = 0; i < sizek; i++) {
 		/* dumpByte(D, f->upvalues[i].instack) wether or not it's stack allocated (register) */
-		printf(GREEN "f->upvalues[%d].instack: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
+		printf(GREEN "proto->upvalues[%d].instack: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
 
 		/* dumpByte(D, f->upvalues[i].idx) the index of upvalue (in stack or in outer function's list) */
-		printf(GREEN "\nf->upvalues[%d].idx: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
+		printf(GREEN "\nproto->upvalues[%d].idx: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
 
 		/* dumpByte(D, f->upvalues[i].kind) the kind of corresponding variable */
-		printf(GREEN "\nf->upvalues[%d].kind: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
+		printf(GREEN "\nproto->upvalues[%d].kind: " RED "0x%.2x" RESET, i, poke_next_byte(file_bytes));
 	}
 
 	printf(GREEN "\n=======\n" RESET);
@@ -239,9 +239,9 @@ PROTO **parse_function(FILE_BYTES *file_bytes) {
 		exit(EXIT_FAILURE);
 	}
 
-	dumpFunction(file_bytes, proto);
-	dumpConstants(file_bytes);
-	dumpUpvalues(file_bytes);
+	dump_function(file_bytes, proto);
+	dump_constants(file_bytes);
+	dump_upvalues(file_bytes);
 
 	/* dumpDebug which I probably won't need */
 	skip_bytes(file_bytes, 66); 
