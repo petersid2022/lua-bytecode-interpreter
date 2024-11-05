@@ -1,46 +1,56 @@
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <assert.h>
 
 #include "file.h"
-#include "utils.h"
 #include "instructions.h"
+#include "utils.h"
 
 int main(int argc, char **argv) {
-	if (argc != 2) {
-		fprintf(stderr, "error: You need to specify a luac file\n");
-		return -1;
-	}
+    if (argc != 2) {
+        fprintf(stderr, "error: You need to specify a luac file\n");
+        return -1;
+    }
 
-	FILE_BYTES **file_bytes = read_file_bytes(argv[1]);
+    s_Filebytes   **file_bytes;
+    s_Prototype   **prototypes;
+    s_Instruction **instructions;
 
-	// Bad way of checking if the file the user provided is a valid Lua bytecode
-	// binary but it is what it is. Basically, the first field of the header is
-	// the LUA_SIGNATURE i.e. "\x1bLua" So, I just check if the second byte of the
-	// file is equal to 'L'
-	assert((*file_bytes)->bytes[1] == '\x4c');
+    file_bytes = read_file_bytes(argv[1]);
 
-	print_full_hex(file_bytes);
+    // Bad way of checking if the file the user provided is a valid Lua bytecode
+    // binary but it is what it is. Basically, the first field of the header is
+    // the LUA_SIGNATURE i.e. "\x1bLua" So, I just check if the second byte of the
+    // file is equal to 'L'
+    assert((*file_bytes)->bytes[1] == '\x4c');
 
-	parse_header(*file_bytes);
-	PROTO **proto = parse_function(*file_bytes);
+    print_full_hex(file_bytes);
 
-	size_t num_of_instructions = (*proto)->code_size / 4;
-	INSTRUCTION **instruction = decode_instructions(*proto);
+    parse_header(*file_bytes);
 
-	for (size_t i = 0; i < num_of_instructions; ++i)
-		free(instruction[i]);
+    prototypes = parse_function(*file_bytes);
 
-	free(instruction);
+    size_t num_of_instructions = (*prototypes)->code_size / 4;
 
-	free((*file_bytes)->bytes);
-	free(*file_bytes);
-	free(file_bytes);
+    instructions = decode_instructions(*prototypes);
 
-	free((*proto)->code);
-	free(*proto);
-	free(proto);
+    // for (size_t i = 0; i < num_of_instructions; ++i) {
+    //     print_binary(instructions[i]->value, 32);
+    // }
 
-	return 0;
+    for (size_t i = 0; i < num_of_instructions; ++i)
+        free(instructions[i]);
+
+    free(instructions);
+
+    free((*file_bytes)->bytes);
+    free(*file_bytes);
+    free(file_bytes);
+
+    free((*prototypes)->code);
+    free(*prototypes);
+    free(prototypes);
+
+    return 0;
 }
