@@ -158,6 +158,7 @@ void dump_function(s_Filebytes *file_bytes, s_Prototype **prototype) {
         (*prototype)->code[i / 4] = instruction;
 
         printf(RED);
+        printf("%-15s\t", opnames[(*prototype)->code[i / 4] & 0x7F]);
         print_binary(instruction, 32);
         printf(RESET);
     }
