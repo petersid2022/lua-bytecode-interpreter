@@ -5,4 +5,4 @@
 #define RED "\033[0;31m"
 #define GREEN "\033[0;32m"
 
-#endif      /*   COLORS_H__   */
+#endif /*   COLORS_H__   */

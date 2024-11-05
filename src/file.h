@@ -5,11 +5,11 @@
 #include <stdint.h>
 
 typedef struct {
-	size_t length;
-	size_t cursor;
-	uint8_t *bytes;
-} FILE_BYTES;
+    size_t   length;
+    size_t   cursor;
+    uint8_t *bytes;
+} s_Filebytes;
 
-FILE_BYTES **read_file_bytes(const char *file_name);
+s_Filebytes **read_file_bytes(const char *file_name);
 
-#endif      /*   FILE_H__   */
+#endif /*   FILE_H__   */
