@@ -13,19 +13,14 @@ const size_t luac_data_len        = 6;
 const size_t luac_int_len         = 8;
 const size_t luac_num_len         = 8;
 
-s_Instruction **decode_instructions(s_Prototype *prototype) {
-    // f->sizecode i.e. number of bytes
-    size_t size = (*prototype).code_size;
-
-    size_t num_of_instructions = size / 4; /* every instruction is 4 bytes long */
-
-    s_Instruction **instruction = calloc(num_of_instructions, sizeof(s_Instruction *));
+s_Instruction **decode_instructions(s_Func_Prototype *prototype) {
+    s_Instruction **instruction = calloc((*prototype).sizecode, sizeof(s_Instruction *));
     if (instruction == NULL) {
         fprintf(stderr, "error: calloc() failed\n");
         exit(EXIT_FAILURE);
     }
 
-    for (size_t i = 0; i < num_of_instructions; ++i) {
+    for (int i = 0; i < (*prototype).sizecode; ++i) {
         instruction[i] = calloc(1, sizeof(s_Instruction));
         if (instruction[i] == NULL) {
             fprintf(stderr, "error: calloc() failed\n");
@@ -33,6 +28,179 @@ s_Instruction **decode_instructions(s_Prototype *prototype) {
         }
 
         uint8_t opcode = prototype->code[i] & 0x7F;
+
+        // switch (opcode) {
+        // OP_MOVE:
+        //     GET_A(prototype->code[i]);
+        //     break;
+        // OP_LOADI:
+        //     break;
+        // OP_LOADF:
+        //     break;
+        // OP_LOADK:
+        //     break;
+        // OP_LOADKX:
+        //     break;
+        // OP_LOADFALSE:
+        //     break;
+        // OP_LFALSESKIP:
+        //     break;
+        // OP_LOADTRUE:
+        //     break;
+        // OP_LOADNIL:
+        //     break;
+        // OP_GETUPVAL:
+        //     break;
+        // OP_SETUPVAL:
+        //     break;
+        // OP_GETTABUP:
+        //     break;
+        // OP_GETTABLE:
+        //     break;
+        // OP_GETI:
+        //     break;
+        // OP_GETFIELD:
+        //     break;
+        // OP_SETTABUP:
+        //     break;
+        // OP_SETTABLE:
+        //     break;
+        // OP_SETI:
+        //     break;
+        // OP_SETFIELD:
+        //     break;
+        // OP_NEWTABLE:
+        //     break;
+        // OP_SELF:
+        //     break;
+        // OP_ADDI:
+        //     break;
+        // OP_ADDK:
+        //     break;
+        // OP_SUBK:
+        //     break;
+        // OP_MULK:
+        //     break;
+        // OP_MODK:
+        //     break;
+        // OP_POWK:
+        //     break;
+        // OP_DIVK:
+        //     break;
+        // OP_IDIVK:
+        //     break;
+        // OP_BANDK:
+        //     break;
+        // OP_BORK:
+        //     break;
+        // OP_BXORK:
+        //     break;
+        // OP_SHRI:
+        //     break;
+        // OP_SHLI:
+        //     break;
+        // OP_ADD:
+        //     break;
+        // OP_SUB:
+        //     break;
+        // OP_MUL:
+        //     break;
+        // OP_MOD:
+        //     break;
+        // OP_POW:
+        //     break;
+        // OP_DIV:
+        //     break;
+        // OP_IDIV:
+        //     break;
+        // OP_BAND:
+        //     break;
+        // OP_BOR:
+        //     break;
+        // OP_BXOR:
+        //     break;
+        // OP_SHL:
+        //     break;
+        // OP_SHR:
+        //     break;
+        // OP_MMBIN:
+        //     break;
+        // OP_MMBINI:
+        //     break;
+        // OP_MMBINK:
+        //     break;
+        // OP_UNM:
+        //     break;
+        // OP_BNOT:
+        //     break;
+        // OP_NOT:
+        //     break;
+        // OP_LEN:
+        //     break;
+        // OP_CONCAT:
+        //     break;
+        // OP_CLOSE:
+        //     break;
+        // OP_TBC:
+        //     break;
+        // OP_JMP:
+        //     break;
+        // OP_EQ:
+        //     break;
+        // OP_LT:
+        //     break;
+        // OP_LE:
+        //     break;
+        // OP_EQK:
+        //     break;
+        // OP_EQI:
+        //     break;
+        // OP_LTI:
+        //     break;
+        // OP_LEI:
+        //     break;
+        // OP_GTI:
+        //     break;
+        // OP_GEI:
+        //     break;
+        // OP_TEST:
+        //     break;
+        // OP_TESTSET:
+        //     break;
+        // OP_CALL:
+        //     break;
+        // OP_TAILCALL:
+        //     break;
+        // OP_RETURN:
+        //     break;
+        // OP_RETURN0:
+        //     break;
+        // OP_RETURN1:
+        //     break;
+        // OP_FORLOOP:
+        //     break;
+        // OP_FORPREP:
+        //     break;
+        // OP_TFORPREP:
+        //     break;
+        // OP_TFORCALL:
+        //     break;
+        // OP_TFORLOOP:
+        //     break;
+        // OP_SETLIST:
+        //     break;
+        // OP_CLOSURE:
+        //     break;
+        // OP_VARARG:
+        //     break;
+        // OP_VARARGPREP:
+        //     break;
+        // OP_EXTRAARG:
+        //     break;
+        // default:
+        //     fprintf(stderr, "Failed to match opcode\n");
+        //     return NULL;
+        // };
 
         memcpy(&instruction[i]->value, &prototype->code[i], sizeof(uint32_t));
         memcpy(&instruction[i]->opcode, &opcode, sizeof(uint8_t));
@@ -111,7 +279,7 @@ void parse_header(s_Filebytes *file_bytes) {
     free(header_signature);
 }
 
-void dump_function(s_Filebytes *file_bytes, s_Prototype **prototype) {
+void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     /* Get filename's length. dumpSize marks the last byte using |= 0x80 */
     int file_name_len = poke_next_byte(file_bytes) & ~0x80;
 
@@ -143,15 +311,12 @@ void dump_function(s_Filebytes *file_bytes, s_Prototype **prototype) {
     printf(GREEN "\nproto->maxstacksize: " RED "0x%.2x" RESET, maxstacksize);
 
     // dumpInt(D, f->sizecode)
-    int sizecode = poke_next_byte(file_bytes) & ~0x80;
-
-    // 4 bytes is the size of each Instruction
-    (*prototype)->code_size = (size_t) sizecode * 4;
+    (*prototype)->sizecode = poke_next_byte(file_bytes) & ~0x80;
 
     // dumpVector(D, f->code, f->sizecode);
     printf(GREEN "\nproto->code:\n" RESET);
-    uint8_t *code = poke_bytes(file_bytes, (*prototype)->code_size);
-    for (size_t i = 0; i < (*prototype)->code_size; i += 4) {
+    uint8_t *code = poke_bytes(file_bytes, (*prototype)->sizecode * 4);
+    for (int i = 0; i < (*prototype)->sizecode * 4; i += 4) {
         uint32_t instruction = (uint32_t) code[i] | ((uint32_t) code[i + 1] << 8) |
             ((uint32_t) code[i + 2] << 16) | ((uint32_t) code[i + 3] << 24);
 
@@ -171,7 +336,7 @@ void dump_constants(s_Filebytes *file_bytes) {
     /* dumpInt(D, f->sizek) */
     int sizek = poke_next_byte(file_bytes) & ~0x80;
 
-    for (size_t i = 0; i < (size_t) sizek; ++i) {
+    for (int i = 0; i < sizek; ++i) {
         int      size;
         uint8_t *lua_string, *lua_int, *lua_num;
         uint8_t  tt = poke_next_byte(file_bytes); /* type tag of a TValue */
@@ -222,36 +387,40 @@ void dump_constants(s_Filebytes *file_bytes) {
     printf(GREEN "=======\n" RESET);
 }
 
-void dump_upvalues(s_Filebytes *file_bytes) {
+void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **proto) {
     /* dumpInt(D, f->sizeupvalues) */
-    int sizek = poke_next_byte(file_bytes) & ~0x80;
-    for (int i = 0; i < sizek; i++) {
+    (*proto)->sizeupvalues = poke_next_byte(file_bytes) & ~0x80;
+
+    for (int i = 0; i < (*proto)->sizeupvalues; i++) {
         /* dumpByte(D, f->upvalues[i].instack) wether or not it's stack allocated
          * (register) */
         uint8_t instack = poke_next_byte(file_bytes);
         printf(GREEN "proto->upvalues[%d].instack: " RED "0x%.2x" RESET, i, instack);
+        (*proto)->upvalues[i].instack = instack;
 
         /* dumpByte(D, f->upvalues[i].idx) the index of upvalue (in stack or in
          * outer function's list) */
         uint8_t idx = poke_next_byte(file_bytes);
         printf(GREEN "\nproto->upvalues[%d].idx: " RED "0x%.2x" RESET, i, idx);
+        (*proto)->upvalues[i].idx = idx;
 
         /* dumpByte(D, f->upvalues[i].kind) the kind of corresponding variable */
         uint8_t kind = poke_next_byte(file_bytes);
         printf(GREEN "\nproto->upvalues[%d].kind: " RED "0x%.2x" RESET, i, kind);
+        (*proto)->upvalues[i].kind = kind;
     }
 
     printf(GREEN "\n=======\n" RESET);
 }
 
-s_Prototype **parse_function(s_Filebytes *file_bytes) {
-    s_Prototype **proto = calloc(file_bytes->length, sizeof(uint8_t));
+s_Func_Prototype **parse_function(s_Filebytes *file_bytes) {
+    s_Func_Prototype **proto = calloc(file_bytes->length, sizeof(uint8_t));
     if (proto == NULL) {
         fprintf(stderr, "error: calloc() failed\n");
         exit(EXIT_FAILURE);
     }
 
-    *proto = calloc(file_bytes->length, sizeof(s_Prototype));
+    *proto = calloc(file_bytes->length, sizeof(s_Func_Prototype));
     if (*proto == NULL) {
         fprintf(stderr, "error: calloc() failed\n");
         exit(EXIT_FAILURE);
@@ -263,9 +432,15 @@ s_Prototype **parse_function(s_Filebytes *file_bytes) {
         exit(EXIT_FAILURE);
     }
 
+    (*proto)->upvalues = calloc(file_bytes->length, sizeof(s_Upvalue_Desc));
+    if ((*proto)->code == NULL) {
+        fprintf(stderr, "error: calloc() failed\n");
+        exit(EXIT_FAILURE);
+    }
+
     dump_function(file_bytes, proto);
     dump_constants(file_bytes);
-    dump_upvalues(file_bytes);
+    dump_upvalues(file_bytes, proto);
 
     /* dumpDebug which I probably won't need */
     skip_bytes(file_bytes, 66);

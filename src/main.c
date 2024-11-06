@@ -13,9 +13,9 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    s_Filebytes   **file_bytes;
-    s_Prototype   **prototypes;
-    s_Instruction **instructions;
+    s_Filebytes      **file_bytes;
+    s_Func_Prototype **prototypes;
+    s_Instruction    **instructions;
 
     file_bytes = read_file_bytes(argv[1]);
 
@@ -31,15 +31,13 @@ int main(int argc, char **argv) {
 
     prototypes = parse_function(*file_bytes);
 
-    size_t num_of_instructions = (*prototypes)->code_size / 4;
-
     instructions = decode_instructions(*prototypes);
 
-    // for (size_t i = 0; i < num_of_instructions; ++i) {
+    // for (size_t i = 0; i < (*prototypes)->sizecode; ++i) {
     //     print_binary(instructions[i]->value, 32);
     // }
 
-    for (size_t i = 0; i < num_of_instructions; ++i)
+    for (int i = 0; i < (*prototypes)->sizecode; ++i)
         free(instructions[i]);
 
     free(instructions);
@@ -49,6 +47,7 @@ int main(int argc, char **argv) {
     free(file_bytes);
 
     free((*prototypes)->code);
+    free((*prototypes)->upvalues);
     free(*prototypes);
     free(prototypes);
 

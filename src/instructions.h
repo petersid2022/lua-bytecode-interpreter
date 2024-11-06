@@ -3,6 +3,8 @@
 
 #include "file.h"
 
+#define GET_A(t) ((t >> 7) & 0xff)
+
 static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE",
     "LFALSESKIP", "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI",
     "GETFIELD", "SETTABUP", "SETTABLE", "SETI", "SETFIELD", "NEWTABLE", "SELF", "ADDI", "ADDK",
@@ -115,23 +117,36 @@ typedef enum {
  * All instructions are unsigned 32-bit integers.
  * */
 typedef struct {
-    /* s_Opcodes opcode; */
-    uint8_t  opcode;
-    uint32_t value;
-    char    *format;
+    s_Opcodes opcode;
+    uint32_t  value;
+    char     *format;
 } s_Instruction; /* See lopcodes.h on how this is implemented */
 
+/*
+** Description of an upvalue for function prototypes
+*/
+typedef struct Upvaldesc {
+    char  **name;    /* upvalue name (for debug information) */
+    uint8_t instack; /* whether it is in stack (register) */
+    uint8_t idx;     /* index of upvalue (in stack or in outer function's list) */
+    uint8_t kind;    /* kind of corresponding variable */
+} s_Upvalue_Desc;
+
+/* Function Prototypes
+ * encapsulate all the necessary
+ * data for each compiled function
+ * */
 typedef struct {
-    size_t    code_size;
-    uint32_t *code;
-} s_Prototype; /* Function Prototypes */
+    char           *source; /* source file name used for debuggin */
+    uint32_t       *code;
+    s_Upvalue_Desc *upvalues; /* variables captured from an enclosing scope */
+    int             sizeupvalues;
+    int             sizecode;
+    uint8_t         maxstacksize;
+} s_Func_Prototype;
 
-void            parse_header(s_Filebytes *file_bytes);
-s_Prototype   **parse_function(s_Filebytes *file_bytes);
-s_Instruction **decode_instructions(s_Prototype *proto);
-
-void dump_upvalues(s_Filebytes *file_bytes);
-void dump_constants(s_Filebytes *file_bytes);
-void dump_function(s_Filebytes *file_bytes, s_Prototype **proto);
+void               parse_header(s_Filebytes *file_bytes);
+s_Func_Prototype **parse_function(s_Filebytes *file_bytes);
+s_Instruction    **decode_instructions(s_Func_Prototype *proto);
 
 #endif // INSTRUCTIONS_H__
