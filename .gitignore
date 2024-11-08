@@ -1,6 +1,3 @@
 lbi
 luac.out
-lua/lua-5.4.7/src/*.o
-lua/lua-5.4.7/src/*.a
-lua/lua-5.4.7/src/lua
-lua/lua-5.4.7/src/luac
+lua/lua-5.4.7/*
