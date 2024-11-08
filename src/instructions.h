@@ -3,7 +3,24 @@
 
 #include "file.h"
 
-#define GET_A(t) ((t >> 7) & 0xff)
+#define OP_SIZE 7
+#define A_SIZE 8
+#define K_SIZE 1
+#define B_SIZE 8
+#define C_SIZE 8
+#define Bx_SIZE 17
+#define sBx_SIZE 17
+#define Ax_SIZE 25
+#define sJ_SIZE 25
+
+#define GET_A(t) ((t >> OP_SIZE) & 0xff)
+#define GET_K(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1)
+#define GET_B(t) ((t >> (OP_SIZE + A_SIZE + K_SIZE)) & 0xff)
+#define GET_C(t) ((t >> (OP_SIZE + A_SIZE + K_SIZE + B_SIZE)) & 0xff)
+#define GET_Bx(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1ffff)
+#define GET_sBx(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1ffff) - (((1 << Bx_SIZE) - 1) >> 1))
+#define GET_Ax(t) ((t >> OP_SIZE) & 0x7FFFFF)
+#define GET_sJ(t) ((t >> OP_SIZE) & 0x7FFFFF)
 
 static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE",
     "LFALSESKIP", "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI",
@@ -15,6 +32,16 @@ static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX
     "RETURN0", "RETURN1", "FORLOOP", "FORPREP", "TFORPREP", "TFORCALL", "TFORLOOP", "SETLIST",
     "CLOSURE", "VARARG", "VARARGPREP", "EXTRAARG", NULL};
 
+/*
+ *         3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ *         1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * iABC          C(8)     |      B(8)     |k|     A(8)      |   Op(7)     |
+ * iABx                Bx(17)               |     A(8)      |   Op(7)     |
+ * iAsBx              sBx (signed)(17)      |     A(8)      |   Op(7)     |
+ * iAx                           Ax(25)                     |   Op(7)     |
+ * isJ                           sJ (signed)(25)            |   Op(7)     |
+ * */
+
 typedef enum {
     OP_MOVE,       /*	A B	R[A] := R[B]					*/
     OP_LOADI,      /*	A sBx	R[A] := sBx					*/
@@ -24,17 +51,14 @@ typedef enum {
     OP_LOADFALSE,  /*	A	R[A] := false  */
     OP_LFALSESKIP, /*A	R[A] := false; pc++	(*)			*/
     OP_LOADTRUE,   /*	A	R[A] := true   */
-    OP_LOADNIL,    /*	A B	R[A], R[A+1], ..., R[A+B] := nil
-                    */
+    OP_LOADNIL,    /*	A B	R[A], R[A+1], ..., R[A+B] := nil */
     OP_GETUPVAL,   /*	A B	R[A] := UpValue[B]   */
     OP_SETUPVAL,   /*	A B	UpValue[B] := R[A]   */
-    OP_GETTABUP,   /*	A B C	R[A] := UpValue[B][K[C]:shortstring]
-                    */
+    OP_GETTABUP,   /*	A B C	R[A] := UpValue[B][K[C]:shortstring] */
     OP_GETTABLE,   /*	A B C	R[A] := R[B][R[C]]   */
     OP_GETI,       /*	A B C	R[A] := R[B][C]					*/
     OP_GETFIELD,   /*	A B C	R[A] := R[B][K[C]:shortstring]   */
-    OP_SETTABUP,   /*	A B C	UpValue[A][K[B]:shortstring] := RK(C)
-                    */
+    OP_SETTABUP,   /*	A B C	UpValue[A][K[B]:shortstring] := RK(C) */
     OP_SETTABLE,   /*	A B C	R[A][R[B]] := RK(C)   */
     OP_SETI,       /*	A B C	R[A][B] := RK(C)				*/
     OP_SETFIELD,   /*	A B C	R[A][K[B]:shortstring] := RK(C)   */
@@ -86,45 +110,25 @@ typedef enum {
     OP_GTI,        /*	A sB k	if ((R[A] > sB) ~= k) then pc++			*/
     OP_GEI,        /*	A sB k	if ((R[A] >= sB) ~= k) then pc++		*/
     OP_TEST,       /*	A k	if (not R[A] == k) then pc++			*/
-    OP_TESTSET,    /*	A B k	if (not R[B] == k) then pc++ else R[A] := R[B]
-                      (*) */
+    OP_TESTSET,    /*	A B k	if (not R[B] == k) then pc++ else R[A] := R[B] (*) */
     OP_CALL,       /*	A B C	R[A], ... ,R[A+C-2] := R[A](R[A+1], ... ,R[A+B-1]) */
-    OP_TAILCALL,   /*	A B C k	return R[A](R[A+1], ... ,R[A+B-1])
-                    */
+    OP_TAILCALL,   /*	A B C k	return R[A](R[A+1], ... ,R[A+B-1]) */
     OP_RETURN,     /*	A B C k	return R[A], ... ,R[A+B-2]	(see note)	*/
     OP_RETURN0,    /*		return    */
     OP_RETURN1,    /*	A	return R[A]    */
-    OP_FORLOOP,    /*	A Bx	update counters; if loop continues then pc-=Bx;
-                    */
-    OP_FORPREP,    /*	A Bx	<check values and prepare counters>; if not to
-                      run then pc+=Bx+1; */
-    OP_TFORPREP,   /*	A Bx	create upvalue for R[A + 3]; pc+=Bx
-                    */
-    OP_TFORCALL,   /*	A C	R[A+4], ... ,R[A+3+C] := R[A](R[A+1], R[A+2]);
-                    */
-    OP_TFORLOOP,   /*	A Bx	if R[A+2] ~= nil then { R[A]=R[A+2]; pc -= Bx }
-                    */
-    OP_SETLIST,    /*	A B C k	R[A][C+i] := R[A+i], 1 <= i <= B
-                    */
+    OP_FORLOOP,    /*	A Bx	update counters; if loop continues then pc-=Bx; */
+    OP_FORPREP,    /*	A Bx	<check values and prepare counters>; if not to run then pc+=Bx+1; */
+    OP_TFORPREP,   /*	A Bx	create upvalue for R[A + 3]; pc+=Bx */
+    OP_TFORCALL,   /*	A C	R[A+4], ... ,R[A+3+C] := R[A](R[A+1], R[A+2]); */
+    OP_TFORLOOP,   /*	A Bx	if R[A+2] ~= nil then { R[A]=R[A+2]; pc -= Bx } */
+    OP_SETLIST,    /*	A B C k	R[A][C+i] := R[A+i], 1 <= i <= B */
     OP_CLOSURE,    /*	A Bx	R[A] := closure(KPROTO[Bx])    */
     OP_VARARG,     /*	A C	R[A], R[A+1], ..., R[A+C-2] = vararg		*/
     OP_VARARGPREP, /*A	(adjust vararg parameters)			*/
-    OP_EXTRAARG    /*	Ax	extra (larger) argument for previous opcode
-                    */
+    OP_EXTRAARG    /*	Ax	extra (larger) argument for previous opcode */
 } s_Opcodes;
 
-/* Instructions for the Lua Virtual Machine
- * All instructions are unsigned 32-bit integers.
- * */
-typedef struct {
-    s_Opcodes opcode;
-    uint32_t  value;
-    char     *format;
-} s_Instruction; /* See lopcodes.h on how this is implemented */
-
-/*
-** Description of an upvalue for function prototypes
-*/
+/* Description of an upvalue for function prototypes */
 typedef struct Upvaldesc {
     char  **name;    /* upvalue name (for debug information) */
     uint8_t instack; /* whether it is in stack (register) */
@@ -137,16 +141,25 @@ typedef struct Upvaldesc {
  * data for each compiled function
  * */
 typedef struct {
-    char           *source; /* source file name used for debuggin */
-    uint32_t       *code;
-    s_Upvalue_Desc *upvalues; /* variables captured from an enclosing scope */
     int             sizeupvalues;
     int             sizecode;
+    int             numparams;
+    int             lastlinedefined;
+    int             linedefined;
     uint8_t         maxstacksize;
+    char           *source;   /* source file name used for debuggin */
+    s_Upvalue_Desc *upvalues; /* variables captured from an enclosing scope */
+    uint32_t        code[];   /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
-void               parse_header(s_Filebytes *file_bytes);
+/* Parse the header section from the binary file:
+ * https://www.lua.org/source/5.4/ldump.c.html#dumpHeader */
+void parse_header(s_Filebytes *file_bytes);
+
+/* Parse the section that dumps each function as a compiled chunk from the binary file:
+ * https://www.lua.org/source/5.4/ldump.c.html#dumpFunction */
 s_Func_Prototype **parse_function(s_Filebytes *file_bytes);
-s_Instruction    **decode_instructions(s_Func_Prototype *proto);
+
+void decode_instructions(s_Func_Prototype *prototype);
 
 #endif // INSTRUCTIONS_H__

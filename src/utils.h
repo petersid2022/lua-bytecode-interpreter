@@ -3,11 +3,22 @@
 
 #include "file.h"
 
-void print_full_hex(s_Filebytes *const *file_bytes);
+/* Simple malloc wrapper that returns a void pointer and if an error occurs it aborts execution
+ * reporting the file and line the error occured. */
+void *safe_malloc(size_t n);
+
+/* Simple printing utilities for printing out the hexbytes of the binary and for properly printing
+ * out the binary representation of a number. */
+void print_full_hex(const s_Filebytes *file_bytes);
 void print_binary(const unsigned long value, const int width);
 
-uint8_t  poke_next_byte(s_Filebytes *file_bytes);
-void     skip_bytes(s_Filebytes *file_bytes, const size_t n);
-uint8_t *poke_bytes(s_Filebytes *file_bytes, const size_t amount);
+/* Moves the cursor n amount, relative to it's current position. */
+uint8_t *poke_bytes(s_Filebytes *file_bytes, const int amount);
 
-#endif /*   UTILS_H__   */
+/* Returns next byte, relative to it's current position. */
+uint8_t poke_next_byte(s_Filebytes *file_bytes);
+
+/* Returns n amount of bytes, relative to it's current position. */
+void skip_bytes(s_Filebytes *file_bytes, const size_t n);
+
+#endif // UTILS_H__
