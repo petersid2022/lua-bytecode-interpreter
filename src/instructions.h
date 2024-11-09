@@ -126,15 +126,26 @@ typedef enum {
     OP_VARARG,     /*	A C	R[A], R[A+1], ..., R[A+C-2] = vararg		*/
     OP_VARARGPREP, /*A	(adjust vararg parameters)			*/
     OP_EXTRAARG    /*	Ax	extra (larger) argument for previous opcode */
-} s_Opcodes;
+} e_Opcodes;
 
 /* Description of an upvalue for function prototypes */
 typedef struct Upvaldesc {
-    char  **name;    /* upvalue name (for debug information) */
     uint8_t instack; /* whether it is in stack (register) */
     uint8_t idx;     /* index of upvalue (in stack or in outer function's list) */
     uint8_t kind;    /* kind of corresponding variable */
+    char   *name;    /* upvalue name (for debug information) */
 } s_Upvalue_Desc;
+
+typedef struct {
+    int pc;
+    int line;
+} s_AbsLineInfo;
+
+typedef struct LocVar {
+    int   startpc; /* first point where variable is active */
+    int   endpc;   /* first point where variable is dead */
+    char *varname;
+} s_LocVar;
 
 /* Function Prototypes
  * encapsulate all the necessary
@@ -144,22 +155,24 @@ typedef struct {
     int             sizeupvalues;
     int             sizecode;
     int             numparams;
+    int             sizelineinfo;
     int             lastlinedefined;
     int             linedefined;
+    int             sizeabslineinfo;
+    int             sizelocvars;
     uint8_t         maxstacksize;
-    char           *source;   /* source file name used for debuggin */
-    s_Upvalue_Desc *upvalues; /* variables captured from an enclosing scope */
-    uint32_t        code[];   /* all instructions are unsigned 32-bit integers. */
+    s_LocVar       *locvars;
+    uint8_t        *lineinfo;
+    char           *source;      /* source file name used for debugging */
+    s_AbsLineInfo  *abslineinfo; /* idem */
+    s_Upvalue_Desc *upvalues;    /* variables captured from an enclosing scope */
+    uint32_t       *code;        /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
-/* Parse the header section from the binary file:
- * https://www.lua.org/source/5.4/ldump.c.html#dumpHeader */
-void parse_header(s_Filebytes *file_bytes);
+/* Parse the bytecode that luac dumps as a compiled chunk from the binary file:
+ * https://www.lua.org/source/5.4/ldump.c.html#luaU_dump */
+s_Func_Prototype **parse_bytecode(s_Filebytes *file_bytes);
 
-/* Parse the section that dumps each function as a compiled chunk from the binary file:
- * https://www.lua.org/source/5.4/ldump.c.html#dumpFunction */
-s_Func_Prototype **parse_function(s_Filebytes *file_bytes);
-
-void decode_instructions(s_Func_Prototype *prototype);
+void match_instructions(s_Func_Prototype *prototype);
 
 #endif // INSTRUCTIONS_H__

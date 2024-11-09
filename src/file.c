@@ -16,7 +16,7 @@ s_Filebytes *read_file_bytes(const char *file_name) {
 
     fp = fopen(file_name, "rb");
     if (fp == NULL) {
-        fprintf(stderr, "error: fopen() failed (%s:%d)\n", __FILE__, __LINE__);
+        fprintf(stderr, "ERROR: fopen() failed\n");
         exit(EXIT_FAILURE);
     }
 
@@ -24,7 +24,7 @@ s_Filebytes *read_file_bytes(const char *file_name) {
 
     length = ftell(fp);
     if (length == 0) {
-        fprintf(stderr, "error: ftell() failed (%s:%d)\n", __FILE__, __LINE__);
+        fprintf(stderr, "ERROR: ftell() failed\n");
         exit(EXIT_FAILURE);
     }
 

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "instructions.h"
 #include "utils.h"
@@ -11,7 +12,7 @@ const size_t luac_data_len        = 6;
 const size_t luac_int_len         = 8;
 const size_t luac_num_len         = 8;
 
-void decode_instructions(s_Func_Prototype *prototype) {
+void match_instructions(s_Func_Prototype *prototype) {
     printf("\nBYTECODE:\n");
 
     for (int i = 0; i < prototype->sizecode; ++i) {
@@ -53,8 +54,8 @@ void decode_instructions(s_Func_Prototype *prototype) {
             printf("%-10s %-5d %-5d\n", opnames[opcode], GET_A(code), GET_B(code));
             break;
         case OP_GETTABUP:
-            printf(
-                "%-10s %-5d %-5d %-5d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            printf("%-10s %-5d %-5d %-5d ; %s\n", opnames[opcode], GET_A(code), GET_B(code),
+                GET_C(code), prototype->upvalues[GET_B(code)].name);
             break;
         case OP_GETTABLE:
             printf(
@@ -277,6 +278,8 @@ void decode_instructions(s_Func_Prototype *prototype) {
             printf("%-10s %-5d %-5d\n", opnames[opcode], GET_A(code), GET_Bx(code));
             break;
         case OP_FORPREP:
+            // printf("%-10s %-5d %-5d ; exit to %d\n", opnames[opcode], GET_A(code), GET_Bx(code),
+            //     prototype->sizecode + GET_Bx(code) + 3);
             printf("%-10s %-5d %-5d\n", opnames[opcode], GET_A(code), GET_Bx(code));
             break;
         // case OP_TFORPREP:
@@ -309,7 +312,7 @@ void decode_instructions(s_Func_Prototype *prototype) {
     }
 }
 
-void parse_header(s_Filebytes *file_bytes) {
+void dump_header(s_Filebytes *file_bytes) {
     printf("\nHEADER: ");
 
     /* dumpLiteral(D, LUA_SIGNATURE) since it's a string literal the last byte is a null terminator,
@@ -383,49 +386,47 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     int file_name_len = poke_next_byte(file_bytes) & ~0x80;
 
     // dumpString(D, f->source) used for debug information
-    printf("proto->source: ");
+    printf("prototype->source: ");
     uint8_t *file_name = poke_bytes(file_bytes, (size_t) (file_name_len - 1)); /* @main.lua */
     for (size_t i = 1; i < (size_t) (file_name_len - 1); ++i) {
         printf("%c", file_name[i]);
     }
-    (*prototype)->source = (char *) file_name;
+    memcpy((*prototype)->source, (char *) file_name, file_name_len - 1);
 
     // dumpInt(D, f->linedefined)
     uint8_t linedefined = poke_next_byte(file_bytes);
-    printf("\nproto->linedefined: 0x%.2x", linedefined);
-    (*prototype)->linedefined = (int) linedefined;
+    printf("\nprototype->linedefined: 0x%.2x", linedefined);
+    (*prototype)->linedefined = linedefined & ~0x80;
 
     // dumpInt(D, f->lastlinedefined)
     uint8_t lastlinedefined = poke_next_byte(file_bytes);
-    printf("\nproto->lastlinedefined: 0x%.2x", lastlinedefined);
-    (*prototype)->lastlinedefined = (int) lastlinedefined;
+    printf("\nprototype->lastlinedefined: 0x%.2x", lastlinedefined);
+    (*prototype)->lastlinedefined = lastlinedefined & ~0x80;
 
     // dumpByte(D, f->numparams)
     uint8_t numparams = poke_next_byte(file_bytes);
-    printf("\nproto->numparams: 0x%.2x", numparams);
+    printf("\nprototype->numparams: 0x%.2x", numparams);
     (*prototype)->numparams = (int) numparams;
 
     // dumpByte(D, f->is_vararg)
     uint8_t vararg = poke_next_byte(file_bytes);
-    printf("\nproto->is_vararg: 0x%.2x", vararg);
+    printf("\nprototype->is_vararg: 0x%.2x", vararg);
 
     // dumpByte(D, f->maxstacksize)
     uint8_t maxstacksize = poke_next_byte(file_bytes);
-    printf("\nproto->maxstacksize: 0x%.2x", maxstacksize);
+    printf("\nprototype->maxstacksize: 0x%.2x", maxstacksize);
     (*prototype)->maxstacksize = (int) maxstacksize;
 
     // dumpInt(D, f->sizecode)
     (*prototype)->sizecode = poke_next_byte(file_bytes) & ~0x80;
 
     // dumpVector(D, f->code, f->sizecode);
-    printf("\nproto->code:\n");
+    printf("\nprototype->code:\n");
     uint8_t *code = poke_bytes(file_bytes, (*prototype)->sizecode * 4);
     for (int i = 0; i < (*prototype)->sizecode * 4; i += 4) {
         uint32_t instruction = (uint32_t) code[i] | ((uint32_t) code[i + 1] << 8) |
             ((uint32_t) code[i + 2] << 16) | ((uint32_t) code[i + 3] << 24);
-
         (*prototype)->code[i / 4] = instruction;
-
         print_binary(instruction, 32);
     }
 
@@ -498,37 +499,100 @@ void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
         /* dumpByte(D, f->upvalues[i].instack) wether or not it's stack allocated
          * (register) */
         uint8_t instack = poke_next_byte(file_bytes);
-        printf("proto->upvalues[%d].instack: 0x%.2x", i, instack);
+        printf("prototype->upvalues[%d].instack: 0x%.2x", i, instack);
         (*prototype)->upvalues[i].instack = instack;
 
         /* dumpByte(D, f->upvalues[i].idx) the index of upvalue (in stack or in
          * outer function's list) */
         uint8_t idx = poke_next_byte(file_bytes);
-        printf("\nproto->upvalues[%d].idx: 0x%.2x", i, idx);
+        printf("\nprototype->upvalues[%d].idx: 0x%.2x", i, idx);
         (*prototype)->upvalues[i].idx = idx;
 
         /* dumpByte(D, f->upvalues[i].kind) the kind of corresponding variable */
         uint8_t kind = poke_next_byte(file_bytes);
-        printf("\nproto->upvalues[%d].kind: 0x%.2x", i, kind);
+        printf("\nprototype->upvalues[%d].kind: 0x%.2x", i, kind);
         (*prototype)->upvalues[i].kind = kind;
     }
+
+    skip_bytes(file_bytes, 1);
 
     printf("\n");
 }
 
-s_Func_Prototype **parse_function(s_Filebytes *file_bytes) {
+void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
+    // Since stripping debug info is by default set to 0 (can be enabled via `-s`)
+    // dumpInt(D, f->sizelineinfo)
+    (*prototype)->sizelineinfo = poke_next_byte(file_bytes) & ~0x80;
+
+    // dumpVector(D, f->lineinfo, n);
+    uint8_t *lineinfo = poke_bytes(file_bytes, (*prototype)->sizelineinfo);
+    for (int i = 0; i < (*prototype)->sizelineinfo; ++i) {
+        (*prototype)->lineinfo[i] = lineinfo[i];
+    }
+
+    // dumpInt(D, f->sizeabslineinfo)
+    (*prototype)->sizeabslineinfo = poke_next_byte(file_bytes) & ~0x80;
+
+    for (int i = 0; i < (*prototype)->sizeabslineinfo; ++i) {
+        (*prototype)->abslineinfo[i].pc   = poke_next_byte(file_bytes) & ~0x80;
+        (*prototype)->abslineinfo[i].line = poke_next_byte(file_bytes) & ~0x80;
+    }
+
+    // dumpInt(D, f->sizelocvars)
+    (*prototype)->sizelocvars = poke_next_byte(file_bytes) & ~0x80;
+
+    for (int i = 0; i < (*prototype)->sizelocvars; ++i) {
+        int      size                    = poke_next_byte(file_bytes) & ~0x80;
+        uint8_t *sizelocvars             = poke_bytes(file_bytes, size - 1);
+        (*prototype)->locvars[i].varname = safe_malloc(size);
+
+        for (int j = 0; j < size - 1; ++j)
+            memcpy(&(*prototype)->locvars[i].varname[j], &sizelocvars[j], 1);
+
+        (*prototype)->locvars[i].varname[size - 1] = '\0';
+
+        free(sizelocvars);
+
+        (*prototype)->locvars[i].startpc = poke_next_byte(file_bytes) & ~0x80;
+        (*prototype)->locvars[i].endpc   = poke_next_byte(file_bytes) & ~0x80;
+    }
+
+    // dumpInt(D, f->sizeupvalues)
+    (*prototype)->sizeupvalues = poke_next_byte(file_bytes) & ~0x80;
+
+    for (int i = 0; i < (*prototype)->sizeupvalues; ++i) {
+        int      size                  = poke_next_byte(file_bytes) & ~0x80;
+        uint8_t *name                  = poke_bytes(file_bytes, size - 1);
+        (*prototype)->upvalues[i].name = safe_malloc(size);
+
+        for (int j = 0; j < size - 1; ++j)
+            memcpy(&(*prototype)->upvalues[i].name[j], &name[j], 1);
+
+        (*prototype)->upvalues[i].name[size - 1] = '\0';
+
+        free(name);
+    }
+
+    free(lineinfo);
+}
+
+s_Func_Prototype **parse_bytecode(s_Filebytes *file_bytes) {
     s_Func_Prototype **prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
 
     *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
 
-    (*prototype)->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+    (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
+    (*prototype)->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
+    (*prototype)->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
+    (*prototype)->upvalues    = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+    (*prototype)->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
+    (*prototype)->source      = safe_malloc(file_bytes->length * sizeof(char));
 
+    dump_header(file_bytes);
     dump_function(file_bytes, prototype);
     dump_constants(file_bytes);
     dump_upvalues(file_bytes, prototype);
-
-    /* dumpDebug which I probably won't need */
-    skip_bytes(file_bytes, 66);
+    dump_debug(file_bytes, prototype);
 
     return prototype;
 }

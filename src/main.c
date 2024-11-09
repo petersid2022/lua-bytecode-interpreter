@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,28 +8,36 @@
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "ERROR: You need to specify a luac file.\n");
+        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
         return -1;
     }
 
-    s_Filebytes       *file_bytes;
-    s_Func_Prototype **prototypes;
+    s_Filebytes *file_bytes = read_file_bytes(argv[1]);
 
-    file_bytes = read_file_bytes(argv[1]);
+    if (file_bytes->bytes[1] != '\x4c') {
+        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
+        return -1;
+    }
 
-    // The first field of the header is the LUA_SIGNATURE i.e. "\x1bLua"
-    // I just check if the second byte of the file is equal to 'L'
-    assert(file_bytes->bytes[1] == '\x4c');
+    print_full_hexcode(file_bytes);
 
-    print_full_hex(file_bytes);
+    s_Func_Prototype **prototypes = parse_bytecode(file_bytes);
 
-    parse_header(file_bytes);
+    match_instructions(*prototypes);
 
-    prototypes = parse_function(file_bytes);
+    for (int i = 0; i < (*prototypes)->sizelocvars; ++i)
+        free((*prototypes)->locvars[i].varname);
 
-    decode_instructions(*prototypes);
+    for (int i = 0; i < (*prototypes)->sizeupvalues; ++i)
+        free((*prototypes)->upvalues[i].name);
 
+    free((*prototypes)->source);
     free((*prototypes)->upvalues);
+    free((*prototypes)->locvars);
+    free((*prototypes)->abslineinfo);
+    free((*prototypes)->lineinfo);
+    free((*prototypes)->code);
+
     free(*prototypes);
     free(prototypes);
     free(file_bytes);

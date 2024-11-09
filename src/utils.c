@@ -10,7 +10,7 @@
 void *safe_malloc(size_t n) {
     void *p = malloc(n);
     if (p == NULL) {
-        fprintf(stderr, "ERROR: failed to allocate %zu bytes. (%s:%d)\n", n, __FILE__, __LINE__);
+        fprintf(stderr, "ERROR: Failed to allocate %zu bytes.\n", n);
         abort();
     }
 
@@ -31,8 +31,8 @@ uint8_t *poke_bytes(s_Filebytes *file_bytes, const int amount) {
     assert(amount > 0);
 
     // Check for out-of-border access
-    if (file_bytes->cursor + amount > file_bytes->length) {
-        fprintf(stderr, "ERROR: not enough bytes to read. (%s:%d)\n", __FILE__, __LINE__);
+    if ((file_bytes->cursor + amount) > file_bytes->length) {
+        fprintf(stderr, "ERROR: Trying to access out-of-border bytes.\n");
         return NULL;
     }
 
@@ -51,7 +51,7 @@ void print_binary(const unsigned long value, const int width) {
     printf("\n");
 }
 
-void print_full_hex(const s_Filebytes *file_bytes) {
+void print_full_hexcode(const s_Filebytes *file_bytes) {
     printf("\nHEXDUMP:\n");
     for (int i = 0; i <= file_bytes->length; i += 16) {
         printf("%.8x  ", i);
