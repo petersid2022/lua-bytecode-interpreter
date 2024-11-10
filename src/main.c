@@ -16,6 +16,7 @@ int main(int argc, char **argv) {
 
     if (file_bytes->bytes[1] != '\x4c') {
         fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
+        free(file_bytes);
         return -1;
     }
 
