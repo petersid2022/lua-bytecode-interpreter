@@ -5,6 +5,11 @@
 
 #include "file.h"
 
+#define HEADER_SIGNATURE_LEN 4
+#define LUAC_DATA_LEN 6
+#define LUAC_INT_LEN 8
+#define LUAC_NUM_LEN 8
+
 #define OP_SIZE 7
 #define A_SIZE 8
 #define K_SIZE 1

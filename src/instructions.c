@@ -8,11 +8,6 @@
 #include "instructions.h"
 #include "utils.h"
 
-const size_t header_signature_len = 4;
-const size_t luac_data_len        = 6;
-const size_t luac_int_len         = 8;
-const size_t luac_num_len         = 8;
-
 void match_instructions(s_Func_Prototype **prototype) {
     int amount = ((*prototype)->nested) ? (*(*prototype)->p)->sizecode : (*prototype)->sizecode;
 
@@ -325,8 +320,8 @@ void dump_header(s_Filebytes *file_bytes) {
     /* dumpLiteral(D, LUA_SIGNATURE) since it's a string literal the last byte is a null terminator,
      * which we strip */
     printf("LUA_SIGNATURE: ");
-    uint8_t *header_signature = poke_bytes(file_bytes, header_signature_len);
-    for (size_t i = 0; i < header_signature_len; ++i) {
+    uint8_t *header_signature = poke_bytes(file_bytes, HEADER_SIGNATURE_LEN);
+    for (size_t i = 0; i < HEADER_SIGNATURE_LEN; ++i) {
         if (i % 1 == 0 && i != 0)
             printf(" ");
         printf("0x%.2x", header_signature[i]);
@@ -340,8 +335,8 @@ void dump_header(s_Filebytes *file_bytes) {
 
     // dumpLiteral(D, LUAC_DATA) "\x19\x93\r\n\x1a\n" used for ERROR correction
     printf("\nLUAC_DATA: ");
-    uint8_t *luac_data = poke_bytes(file_bytes, luac_data_len);
-    for (size_t i = 0; i < luac_data_len; ++i) {
+    uint8_t *luac_data = poke_bytes(file_bytes, LUAC_DATA_LEN);
+    for (size_t i = 0; i < LUAC_DATA_LEN; ++i) {
         if (i % 1 == 0 && i != 0)
             printf(" ");
         printf("0x%.2x", luac_data[i]);
@@ -359,8 +354,8 @@ void dump_header(s_Filebytes *file_bytes) {
 
     // dumpInteger(D, LUAC_INT) used for detecting integer format mismatch
     printf("\nLUAC_INT: ");
-    uint8_t *luac_int = poke_bytes(file_bytes, luac_int_len);
-    for (size_t i = 0; i < luac_int_len; ++i) {
+    uint8_t *luac_int = poke_bytes(file_bytes, LUAC_INT_LEN);
+    for (size_t i = 0; i < LUAC_INT_LEN; ++i) {
         if (i % 1 == 0 && i != 0)
             printf(" ");
         printf("0x%.2x", luac_int[i]);
@@ -368,8 +363,8 @@ void dump_header(s_Filebytes *file_bytes) {
 
     // dumpNumber(D, LUAC_NUM) used for detecting floating format mismatch
     printf("\nLUAC_NUM: ");
-    uint8_t *luac_num = poke_bytes(file_bytes, luac_num_len);
-    for (size_t i = 0; i < luac_num_len; ++i) {
+    uint8_t *luac_num = poke_bytes(file_bytes, LUAC_NUM_LEN);
+    for (size_t i = 0; i < LUAC_NUM_LEN; ++i) {
         if (i % 1 == 0 && i != 0)
             printf(" ");
         printf("0x%.2x", luac_num[i]);
@@ -463,8 +458,8 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
          */
         case 19: /* LUA_VNUMFLT = float numbers */
             printf("LUA_VNUMFLT: ");
-            lua_num = poke_bytes(file_bytes, luac_num_len);
-            for (size_t i = 0; i < luac_num_len; ++i) {
+            lua_num = poke_bytes(file_bytes, LUAC_NUM_LEN);
+            for (size_t i = 0; i < LUAC_NUM_LEN; ++i) {
                 if (i % 1 == 0 && i != 0)
                     printf(" ");
                 printf("%.2x", lua_num[i]);
@@ -473,8 +468,8 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
             break;
         case 3: /* LUA_VNUMINT = integer numbers */
             printf("LUA_VNUMINT: ");
-            lua_int = poke_bytes(file_bytes, luac_int_len);
-            for (size_t i = 0; i < luac_int_len; ++i) {
+            lua_int = poke_bytes(file_bytes, LUAC_INT_LEN);
+            for (size_t i = 0; i < LUAC_INT_LEN; ++i) {
                 if (i % 1 == 0 && i != 0)
                     printf(" ");
                 printf("%.2x", lua_int[i]);
