@@ -51,8 +51,7 @@ void print_binary(const unsigned long value, const int width) {
     printf("\n");
 }
 
-void print_full_hexcode(const s_Filebytes *file_bytes) {
-    printf("\nHEXDUMP:\n");
+void print_hexdump(const s_Filebytes *file_bytes) {
     for (int i = 0; i <= file_bytes->length; i += 16) {
         printf("%.8x  ", i);
         for (int j = 0; j < 16; ++j) {

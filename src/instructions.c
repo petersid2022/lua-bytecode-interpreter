@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,12 +13,18 @@ const size_t luac_data_len        = 6;
 const size_t luac_int_len         = 8;
 const size_t luac_num_len         = 8;
 
-void match_instructions(s_Func_Prototype *prototype) {
-    printf("\nBYTECODE:\n");
+void match_instructions(s_Func_Prototype **prototype) {
+    int amount = ((*prototype)->nested) ? (*(*prototype)->p)->sizecode : (*prototype)->sizecode;
 
-    for (int i = 0; i < prototype->sizecode; ++i) {
-        uint32_t code   = prototype->code[i];
-        uint8_t  opcode = code & 0x7F;
+    for (int i = 0; i < amount; ++i) {
+        bool is_nested = ((*prototype)->nested);
+
+        s_Upvalue_Desc *upvalues =
+            is_nested ? (*(*prototype)->p)->upvalues : (*prototype)->upvalues;
+
+        uint32_t code = is_nested ? (*(*prototype)->p)->code[i] : (*prototype)->code[i];
+
+        uint8_t opcode = code & 0x7F;
 
         switch (opcode) {
         case OP_MOVE:
@@ -55,7 +62,7 @@ void match_instructions(s_Func_Prototype *prototype) {
             break;
         case OP_GETTABUP:
             printf("%-10s %-5d %-5d %-5d ; %s\n", opnames[opcode], GET_A(code), GET_B(code),
-                GET_C(code), prototype->upvalues[GET_B(code)].name);
+                GET_C(code), upvalues[GET_B(code)].name);
             break;
         case OP_GETTABLE:
             printf(
@@ -313,11 +320,11 @@ void match_instructions(s_Func_Prototype *prototype) {
 }
 
 void dump_header(s_Filebytes *file_bytes) {
-    printf("\nHEADER: ");
+    printf("\n");
 
     /* dumpLiteral(D, LUA_SIGNATURE) since it's a string literal the last byte is a null terminator,
      * which we strip */
-    printf("\nLUA_SIGNATURE: ");
+    printf("LUA_SIGNATURE: ");
     uint8_t *header_signature = poke_bytes(file_bytes, header_signature_len);
     for (size_t i = 0; i < header_signature_len; ++i) {
         if (i % 1 == 0 && i != 0)
@@ -379,33 +386,37 @@ void dump_header(s_Filebytes *file_bytes) {
     free(header_signature);
 }
 
-void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
-    printf("\nFUNCTION:\n");
+void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested) {
+    printf("\n");
 
-    /* Get filename's length. dumpSize marks the last byte using |= 0x80 */
-    int file_name_len = poke_next_byte(file_bytes) & ~0x80;
+    if (!is_nested) {
+        /* Get filename's length. dumpSize marks the last byte using |= 0x80 */
+        int file_name_len = poke_next_byte(file_bytes) & ~0x80;
 
-    // dumpString(D, f->source) used for debug information
-    printf("prototype->source: ");
-    uint8_t *file_name = poke_bytes(file_bytes, (size_t) (file_name_len - 1)); /* @main.lua */
-    for (size_t i = 1; i < (size_t) (file_name_len - 1); ++i) {
-        printf("%c", file_name[i]);
+        // dumpString(D, f->source) used for debug information
+        printf("prototype->source: ");
+        uint8_t *file_name = poke_bytes(file_bytes, (size_t) (file_name_len - 1)); /* @main.lua */
+        for (size_t i = 1; i < (size_t) (file_name_len - 1); ++i) {
+            printf("%c", file_name[i]);
+        }
+        memcpy((*prototype)->source, (char *) file_name, file_name_len - 1);
+
+        free(file_name);
     }
-    memcpy((*prototype)->source, (char *) file_name, file_name_len - 1);
 
     // dumpInt(D, f->linedefined)
     uint8_t linedefined = poke_next_byte(file_bytes);
-    printf("\nprototype->linedefined: 0x%.2x", linedefined);
+    printf("\nprototype->linedefined: 0x%.2d", linedefined & ~0x80);
     (*prototype)->linedefined = linedefined & ~0x80;
 
     // dumpInt(D, f->lastlinedefined)
     uint8_t lastlinedefined = poke_next_byte(file_bytes);
-    printf("\nprototype->lastlinedefined: 0x%.2x", lastlinedefined);
+    printf("\nprototype->lastlinedefined: 0x%.2d", lastlinedefined & ~0x80);
     (*prototype)->lastlinedefined = lastlinedefined & ~0x80;
 
     // dumpByte(D, f->numparams)
     uint8_t numparams = poke_next_byte(file_bytes);
-    printf("\nprototype->numparams: 0x%.2x", numparams);
+    printf("\nprototype->numparams: 0x%.2d", (int) numparams);
     (*prototype)->numparams = (int) numparams;
 
     // dumpByte(D, f->is_vararg)
@@ -414,7 +425,7 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
 
     // dumpByte(D, f->maxstacksize)
     uint8_t maxstacksize = poke_next_byte(file_bytes);
-    printf("\nprototype->maxstacksize: 0x%.2x", maxstacksize);
+    printf("\nprototype->maxstacksize: 0x%.2d", (int) maxstacksize);
     (*prototype)->maxstacksize = (int) maxstacksize;
 
     // dumpInt(D, f->sizecode)
@@ -431,14 +442,14 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     }
 
     free(code);
-    free(file_name);
 }
 
-void dump_constants(s_Filebytes *file_bytes) {
-    printf("\nCONSTANTS:\n");
+void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
+    printf("\n");
 
     /* dumpInt(D, f->sizek) */
-    int sizek = poke_next_byte(file_bytes) & ~0x80;
+    int sizek           = poke_next_byte(file_bytes) & ~0x80;
+    (*prototype)->sizek = sizek;
 
     for (int i = 0; i < sizek; ++i) {
         int      size;
@@ -479,18 +490,20 @@ void dump_constants(s_Filebytes *file_bytes) {
             for (int i = 0; i < size - 1; ++i) {
                 printf("%c", lua_string[i]);
             }
-            printf("\n");
             free(lua_string);
             break;
         default:
             /* lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE) */
+            // continue;
             assert(tt == 0 || tt == 1 || tt == 17);
         }
+
+        printf("\n");
     }
 }
 
 void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
-    printf("\nUPVALUES:\n");
+    printf("\n");
 
     /* dumpInt(D, f->sizeupvalues) */
     (*prototype)->sizeupvalues = poke_next_byte(file_bytes) & ~0x80;
@@ -513,10 +526,33 @@ void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
         printf("\nprototype->upvalues[%d].kind: 0x%.2x", i, kind);
         (*prototype)->upvalues[i].kind = kind;
     }
-
-    skip_bytes(file_bytes, 1);
-
     printf("\n");
+}
+
+void dump_protos(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
+    printf("\n");
+
+    // dumpInt(D, f->sizep)
+    (*prototype)->sizep = poke_next_byte(file_bytes) & ~0x80;
+
+    for (int i = 0; i < (*prototype)->sizep; i++) {
+        (*prototype)->p    = safe_malloc((*prototype)->sizep * sizeof(s_Func_Prototype *));
+        (*prototype)->p[i] = safe_malloc(sizeof(s_Func_Prototype));
+        (*prototype)->p[i]->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
+        (*prototype)->p[i]->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
+        (*prototype)->p[i]->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
+        (*prototype)->p[i]->upvalues    = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+        (*prototype)->p[i]->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
+        (*prototype)->p[i]->source      = safe_malloc(file_bytes->length * sizeof(char));
+    }
+
+    for (int i = 0; i < (*prototype)->sizep; i++) {
+        printf("\n----[%d]----\n", i);
+        (*prototype)->nested = true;
+        (*prototype)->scopecount++;
+        skip_bytes(file_bytes, 1);
+        parse_functions(file_bytes, (*prototype)->p, true);
+    }
 }
 
 void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
@@ -576,23 +612,72 @@ void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     free(lineinfo);
 }
 
-s_Func_Prototype **parse_bytecode(s_Filebytes *file_bytes) {
-    s_Func_Prototype **prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
+void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested) {
+    dump_function(file_bytes, prototype, is_nested);
+    dump_constants(file_bytes, prototype);
+    dump_upvalues(file_bytes, prototype);
+    dump_protos(file_bytes, prototype);
+    dump_debug(file_bytes, prototype);
+}
 
-    *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
+void cleanup_prototypes(s_Func_Prototype **prototypes) {
+    for (int i = 0; i < (*prototypes)->sizelocvars; ++i)
+        free((*prototypes)->locvars[i].varname);
 
+    for (int i = 0; i < (*prototypes)->sizeupvalues; ++i)
+        free((*prototypes)->upvalues[i].name);
+
+    free((*prototypes)->source);
+    free((*prototypes)->upvalues);
+    free((*prototypes)->locvars);
+    free((*prototypes)->abslineinfo);
+    free((*prototypes)->lineinfo);
+    free((*prototypes)->code);
+
+    for (int i = 0; i < (*prototypes)->sizep; i++) {
+        s_Func_Prototype *proto = (*prototypes)->p[i];
+
+        for (int j = 0; j < proto->sizelocvars; ++j) {
+            free(proto->locvars[j].varname);
+        }
+
+        for (int k = 0; k < proto->sizeupvalues; ++k) {
+            free(proto->upvalues[k].name);
+        }
+
+        free(proto->source);
+        free(proto->upvalues);
+        free(proto->locvars);
+        free(proto->abslineinfo);
+        free(proto->lineinfo);
+        free(proto->code);
+
+        free((*prototypes)->p);
+        free(proto);
+    }
+
+    free(*prototypes);
+    free(prototypes);
+}
+
+void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
+    dump_header(file_bytes);
+
+    bool is_nested = false;
+
+    prototype                 = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
+    *prototype                = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
     (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
     (*prototype)->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
     (*prototype)->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
     (*prototype)->upvalues    = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
     (*prototype)->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
     (*prototype)->source      = safe_malloc(file_bytes->length * sizeof(char));
+    (*prototype)->nested      = is_nested;
 
-    dump_header(file_bytes);
-    dump_function(file_bytes, prototype);
-    dump_constants(file_bytes);
-    dump_upvalues(file_bytes, prototype);
-    dump_debug(file_bytes, prototype);
+    (*prototype)->scopecount = 1;
 
-    return prototype;
+    parse_functions(file_bytes, prototype, is_nested);
+    match_instructions(prototype);
+    cleanup_prototypes(prototype);
 }

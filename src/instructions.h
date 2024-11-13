@@ -1,6 +1,8 @@
 #ifndef INSTRUCTIONS_H__
 #define INSTRUCTIONS_H__
 
+#include <stdbool.h>
+
 #include "file.h"
 
 #define OP_SIZE 7
@@ -151,28 +153,37 @@ typedef struct LocVar {
  * encapsulate all the necessary
  * data for each compiled function
  * */
-typedef struct {
-    int             sizeupvalues;
-    int             sizecode;
-    int             numparams;
-    int             sizelineinfo;
-    int             lastlinedefined;
-    int             linedefined;
-    int             sizeabslineinfo;
-    int             sizelocvars;
-    uint8_t         maxstacksize;
-    s_LocVar       *locvars;
-    uint8_t        *lineinfo;
-    char           *source;      /* source file name used for debugging */
-    s_AbsLineInfo  *abslineinfo; /* idem */
-    s_Upvalue_Desc *upvalues;    /* variables captured from an enclosing scope */
-    uint32_t       *code;        /* all instructions are unsigned 32-bit integers. */
+typedef struct s_Func_Prototype {
+    int                       sizep;
+    int                       sizek;
+    int                       sizeupvalues;
+    int                       sizecode;
+    int                       numparams;
+    int                       sizelineinfo;
+    int                       lastlinedefined;
+    int                       linedefined;
+    int                       sizeabslineinfo;
+    int                       sizelocvars;
+    int                       scopecount;
+    uint8_t                   maxstacksize;
+    bool                      nested;
+    s_LocVar                 *locvars;
+    uint8_t                  *lineinfo;
+    char                     *source;      /* source file name used for debugging */
+    struct s_Func_Prototype **p;           /* functions defined inside the function */
+    s_AbsLineInfo            *abslineinfo; /* idem */
+    s_Upvalue_Desc           *upvalues;    /* variables captured from an enclosing scope */
+    uint32_t                 *code;        /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
+
+/* Match instruction opcodes and print the bytecode listing */
+void match_instructions(s_Func_Prototype **prototype);
 
 /* Parse the bytecode that luac dumps as a compiled chunk from the binary file:
  * https://www.lua.org/source/5.4/ldump.c.html#luaU_dump */
-s_Func_Prototype **parse_bytecode(s_Filebytes *file_bytes);
+void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested);
 
-void match_instructions(s_Func_Prototype *prototype);
+/* Entry point for the parser */
+void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype);
 
 #endif // INSTRUCTIONS_H__
