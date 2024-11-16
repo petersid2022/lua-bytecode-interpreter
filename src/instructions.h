@@ -20,6 +20,11 @@
 #define Ax_SIZE 25
 #define sJ_SIZE 25
 
+#define MAXARG_C ((1 << C_SIZE) - 1)
+#define OFFSET_sC (MAXARG_C >> 1)
+#define int2sC(i) ((i) + OFFSET_sC)
+#define sC2int(i) ((i) - OFFSET_sC)
+
 #define GET_A(t) ((t >> OP_SIZE) & 0xff)
 #define GET_K(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1)
 #define GET_B(t) ((t >> (OP_SIZE + A_SIZE + K_SIZE)) & 0xff)
@@ -28,6 +33,11 @@
 #define GET_sBx(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1ffff) - (((1 << Bx_SIZE) - 1) >> 1))
 #define GET_Ax(t) ((t >> OP_SIZE) & 0x7FFFFF)
 #define GET_sJ(t) ((t >> OP_SIZE) & 0x7FFFFF)
+#define GET_sC(t) sC2int(GET_C(t))
+#define GET_sB(t) sC2int(GET_B(t))
+#define GET_k(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1))
+
+#define COMMENT "\t\t; "
 
 static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE",
     "LFALSESKIP", "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI",
