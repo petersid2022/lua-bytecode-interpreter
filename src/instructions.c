@@ -179,12 +179,10 @@ void match_instructions(s_Func_Prototype **prototype) {
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MMBINI:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_C(code),
-                GET_k(code));
+            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_C(code), GET_k(code));
             break;
         case OP_MMBINK:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code),
-                GET_k(code));
+            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
             break;
         case OP_UNM:
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
@@ -248,8 +246,7 @@ void match_instructions(s_Func_Prototype **prototype) {
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_TAILCALL:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code),
-                GET_k(code));
+            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
             break;
         case OP_RETURN:
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
@@ -277,8 +274,7 @@ void match_instructions(s_Func_Prototype **prototype) {
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
             break;
         case OP_SETLIST:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code),
-                GET_k(code));
+            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
             break;
         case OP_CLOSURE:
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
@@ -370,8 +366,6 @@ void dump_header(s_Filebytes *file_bytes) {
 }
 
 void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested) {
-    printf("\n");
-
     if (!is_nested) {
         /* Get filename's length. dumpSize marks the last byte using |= 0x80 */
         int file_name_len = poke_next_byte(file_bytes) & ~0x80;
@@ -385,11 +379,13 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
         memcpy((*prototype)->source, (char *) file_name, file_name_len - 1);
 
         free(file_name);
+
+        printf("\n");
     }
 
     // dumpInt(D, f->linedefined)
     uint8_t linedefined = poke_next_byte(file_bytes);
-    printf("\nprototype->linedefined: 0x%.2d", linedefined & ~0x80);
+    printf("prototype->linedefined: 0x%.2d", linedefined & ~0x80);
     (*prototype)->linedefined = linedefined & ~0x80;
 
     // dumpInt(D, f->lastlinedefined)
@@ -418,8 +414,8 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
     printf("\nprototype->code:\n");
     uint8_t *code = poke_bytes(file_bytes, (*prototype)->sizecode * 4);
     for (int i = 0; i < (*prototype)->sizecode * 4; i += 4) {
-        uint32_t instruction = (uint32_t) code[i] | ((uint32_t) code[i + 1] << 8) |
-            ((uint32_t) code[i + 2] << 16) | ((uint32_t) code[i + 3] << 24);
+        uint32_t instruction = (uint32_t) code[i] | ((uint32_t) code[i + 1] << 8) | ((uint32_t) code[i + 2] << 16) |
+            ((uint32_t) code[i + 3] << 24);
         (*prototype)->code[i / 4] = instruction;
         print_binary(instruction, 32);
     }
@@ -428,8 +424,6 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
 }
 
 void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
-    printf("\n");
-
     /* dumpInt(D, f->sizek) */
     int sizek           = poke_next_byte(file_bytes) & ~0x80;
     (*prototype)->sizek = sizek;
@@ -486,8 +480,6 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
 }
 
 void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
-    printf("\n");
-
     /* dumpInt(D, f->sizeupvalues) */
     (*prototype)->sizeupvalues = poke_next_byte(file_bytes) & ~0x80;
 
@@ -513,14 +505,12 @@ void dump_upvalues(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
 }
 
 void dump_protos(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
-    printf("\n");
-
     // dumpInt(D, f->sizep)
     (*prototype)->sizep = poke_next_byte(file_bytes) & ~0x80;
 
     for (int i = 0; i < (*prototype)->sizep; i++) {
-        (*prototype)->p    = safe_malloc((*prototype)->sizep * sizeof(s_Func_Prototype *));
-        (*prototype)->p[i] = safe_malloc(sizeof(s_Func_Prototype));
+        (*prototype)->p                 = safe_malloc((*prototype)->sizep * sizeof(s_Func_Prototype *));
+        (*prototype)->p[i]              = safe_malloc(sizeof(s_Func_Prototype));
         (*prototype)->p[i]->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
         (*prototype)->p[i]->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
         (*prototype)->p[i]->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
@@ -530,11 +520,10 @@ void dump_protos(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     }
 
     for (int i = 0; i < (*prototype)->sizep; i++) {
-        printf("\n----[%d]----\n", i);
         (*prototype)->nested = true;
-        (*prototype)->scopecount++;
         skip_bytes(file_bytes, 1);
-        parse_functions(file_bytes, (*prototype)->p, true);
+        int scopecount = (*prototype)->scopecount + 1;
+        parse_functions(file_bytes, (*prototype)->p, true, scopecount);
     }
 }
 
@@ -595,7 +584,8 @@ void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     free(lineinfo);
 }
 
-void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested) {
+void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool is_nested, int scopecount) {
+    printf("\n----[%d]----\n\n", scopecount);
     dump_function(file_bytes, prototype, is_nested);
     dump_constants(file_bytes, prototype);
     dump_upvalues(file_bytes, prototype);
@@ -655,10 +645,9 @@ void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     (*prototype)->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
     (*prototype)->source      = safe_malloc(file_bytes->length * sizeof(char));
     (*prototype)->nested      = false;
+    (*prototype)->scopecount  = 1;
 
-    (*prototype)->scopecount = 1;
-
-    parse_functions(file_bytes, prototype, false);
+    parse_functions(file_bytes, prototype, false, (*prototype)->scopecount);
     match_instructions(prototype);
     cleanup_prototypes(prototype);
 }
