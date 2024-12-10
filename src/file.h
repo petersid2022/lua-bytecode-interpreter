@@ -5,8 +5,8 @@
 #include <stdint.h>
 
 typedef struct {
-    int     length;
-    int     cursor;
+    int length;
+    int cursor;
     uint8_t bytes[];
 } s_Filebytes;
 

@@ -149,7 +149,7 @@ typedef struct Upvaldesc {
     uint8_t instack; /* whether it is in stack (register) */
     uint8_t idx;     /* index of upvalue (in stack or in outer function's list) */
     uint8_t kind;    /* kind of corresponding variable */
-    char   *name;    /* upvalue name (for debug information) */
+    char *name;      /* upvalue name (for debug information) */
 } s_Upvalue_Desc;
 
 typedef struct {
@@ -158,8 +158,8 @@ typedef struct {
 } s_AbsLineInfo;
 
 typedef struct LocVar {
-    int   startpc; /* first point where variable is active */
-    int   endpc;   /* first point where variable is dead */
+    int startpc; /* first point where variable is active */
+    int endpc;   /* first point where variable is dead */
     char *varname;
 } s_LocVar;
 
@@ -168,26 +168,26 @@ typedef struct LocVar {
  * data for each compiled function
  * */
 typedef struct s_Func_Prototype {
-    int                       sizep;
-    int                       sizek;
-    int                       sizeupvalues;
-    int                       sizecode;
-    int                       numparams;
-    int                       sizelineinfo;
-    int                       lastlinedefined;
-    int                       linedefined;
-    int                       sizeabslineinfo;
-    int                       sizelocvars;
-    int                       scopecount;
-    uint8_t                   maxstacksize;
-    bool                      nested;
-    s_LocVar                 *locvars;
-    uint8_t                  *lineinfo;
-    char                     *source;      /* source file name used for debugging */
-    struct s_Func_Prototype **p;           /* functions defined inside the function */
-    s_AbsLineInfo            *abslineinfo; /* idem */
-    s_Upvalue_Desc           *upvalues;    /* variables captured from an enclosing scope */
-    uint32_t                 *code;        /* all instructions are unsigned 32-bit integers. */
+    int sizep;
+    int sizek;
+    int sizeupvalues;
+    int sizecode;
+    int numparams;
+    int sizelineinfo;
+    int lastlinedefined;
+    int linedefined;
+    int sizeabslineinfo;
+    int sizelocvars;
+    int scopecount;
+    uint8_t maxstacksize;
+    bool nested;
+    s_LocVar *locvars;
+    uint8_t *lineinfo;
+    char *source;                /* source file name used for debugging */
+    struct s_Func_Prototype **p; /* functions defined inside the function */
+    s_AbsLineInfo *abslineinfo;  /* idem */
+    s_Upvalue_Desc *upvalues;    /* variables captured from an enclosing scope */
+    uint32_t *code;              /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
 /* Match instruction opcodes and print the bytecode listing */

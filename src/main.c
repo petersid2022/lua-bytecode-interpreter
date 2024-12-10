@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    s_Filebytes       *file_bytes = NULL;
+    s_Filebytes *file_bytes = NULL;
     s_Func_Prototype **prototypes = NULL;
 
     file_bytes = read_file_bytes(argv[1]);

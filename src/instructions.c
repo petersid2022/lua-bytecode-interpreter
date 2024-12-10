@@ -8,32 +8,27 @@
 #include "instructions.h"
 #include "utils.h"
 
-void match_instructions(s_Func_Prototype **prototype) {
-    bool is_nested = (*prototype)->nested;
+void match_instructions(s_Func_Prototype **p) {
+    int amount = (*p)->sizecode;
+    bool is_nested = (*p)->nested;
 
-    int amount;
-    if (is_nested) {
-        amount = ((*prototype)->sizecode + (*(*prototype)->p)->sizecode);
-    } else {
-        amount = (*prototype)->sizecode;
-    }
+    if (is_nested)
+        amount += (*(*p)->p)->sizecode;
 
-    uint32_t       *instructions = malloc(amount * sizeof(uint32_t));
-    s_Upvalue_Desc *upvalues     = malloc(amount * sizeof(s_Upvalue_Desc));
+    uint32_t *instructions = malloc(amount * sizeof(uint32_t));
+    s_Upvalue_Desc *upvalues = malloc(amount * sizeof(s_Upvalue_Desc));
 
-    memcpy(instructions, (*prototype)->code, (*prototype)->sizecode * sizeof(uint32_t));
-    memcpy(upvalues, (*prototype)->upvalues, (*prototype)->sizeupvalues * sizeof(s_Upvalue_Desc));
+    memcpy(instructions, (*p)->code, (*p)->sizecode * sizeof(uint32_t));
+    memcpy(upvalues, (*p)->upvalues, (*p)->sizeupvalues * sizeof(s_Upvalue_Desc));
 
     if (is_nested) {
-        memcpy(instructions + (*prototype)->sizecode, (*(*prototype)->p)->code,
-            (*(*prototype)->p)->sizecode * sizeof(uint32_t));
-        memcpy(upvalues + (*prototype)->sizeupvalues, (*(*prototype)->p)->upvalues,
-            (*(*prototype)->p)->sizeupvalues * sizeof(s_Upvalue_Desc));
+        memcpy(instructions + (*p)->sizecode, (*(*p)->p)->code, (*(*p)->p)->sizecode * sizeof(uint32_t));
+        memcpy(upvalues + (*p)->sizeupvalues, (*(*p)->p)->upvalues, (*(*p)->p)->sizeupvalues * sizeof(s_Upvalue_Desc));
     }
 
     for (int i = 0; i < amount; i++) {
-        uint32_t code   = instructions[i];
-        uint8_t  opcode = code & 0x7F;
+        uint32_t code = instructions[i];
+        uint8_t opcode = code & 0x7F;
 
         switch (opcode) {
         case OP_MOVE:
@@ -71,7 +66,7 @@ void match_instructions(s_Func_Prototype **prototype) {
             break;
         case OP_GETTABUP:
             printf("%-10s %d %d %d", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
-            printf(COMMENT "%s\n", upvalues[GET_B(code)].name);
+            printf("\t; %-10s\n", upvalues[GET_B(code)].name);
             break;
         case OP_GETTABLE:
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
@@ -207,7 +202,7 @@ void match_instructions(s_Func_Prototype **prototype) {
             break;
         case OP_JMP:
             printf("%-10s %d", opnames[opcode], GET_sJ(code));
-            printf(COMMENT "to %d\n", GET_sJ(code) + i + 2);
+            printf("\t; to %-10d\n", GET_sJ(code) + i + 2);
             break;
         case OP_EQ:
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
@@ -262,7 +257,7 @@ void match_instructions(s_Func_Prototype **prototype) {
             break;
         case OP_FORPREP:
             printf("%-10s %d %d", opnames[opcode], GET_A(code), GET_Bx(code));
-            printf(COMMENT "exit to %d\n", i + GET_Bx(code) + 3);
+            printf("\t; exit to %-10d\n", i + GET_Bx(code) + 3);
             break;
         case OP_TFORPREP:
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
@@ -425,13 +420,13 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
 
 void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     /* dumpInt(D, f->sizek) */
-    int sizek           = poke_next_byte(file_bytes) & ~0x80;
+    int sizek = poke_next_byte(file_bytes) & ~0x80;
     (*prototype)->sizek = sizek;
 
     for (int i = 0; i < sizek; ++i) {
-        int      size;
+        int size;
         uint8_t *lua_string, *lua_int, *lua_num;
-        uint8_t  tt = poke_next_byte(file_bytes); /* type tag of a TValue */
+        uint8_t tt = poke_next_byte(file_bytes); /* type tag of a TValue */
 
         switch (tt) {
         /*
@@ -509,14 +504,14 @@ void dump_protos(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     (*prototype)->sizep = poke_next_byte(file_bytes) & ~0x80;
 
     for (int i = 0; i < (*prototype)->sizep; i++) {
-        (*prototype)->p                 = safe_malloc((*prototype)->sizep * sizeof(s_Func_Prototype *));
-        (*prototype)->p[i]              = safe_malloc(sizeof(s_Func_Prototype));
+        (*prototype)->p = safe_malloc((*prototype)->sizep * sizeof(s_Func_Prototype *));
+        (*prototype)->p[i] = safe_malloc(sizeof(s_Func_Prototype));
         (*prototype)->p[i]->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
-        (*prototype)->p[i]->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
-        (*prototype)->p[i]->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
-        (*prototype)->p[i]->upvalues    = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
-        (*prototype)->p[i]->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
-        (*prototype)->p[i]->source      = safe_malloc(file_bytes->length * sizeof(char));
+        (*prototype)->p[i]->lineinfo = safe_malloc(file_bytes->length * sizeof(uint8_t));
+        (*prototype)->p[i]->code = safe_malloc(file_bytes->length * sizeof(uint32_t));
+        (*prototype)->p[i]->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+        (*prototype)->p[i]->locvars = safe_malloc(file_bytes->length * sizeof(s_LocVar));
+        (*prototype)->p[i]->source = safe_malloc(file_bytes->length * sizeof(char));
     }
 
     for (int i = 0; i < (*prototype)->sizep; i++) {
@@ -542,7 +537,7 @@ void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     (*prototype)->sizeabslineinfo = poke_next_byte(file_bytes) & ~0x80;
 
     for (int i = 0; i < (*prototype)->sizeabslineinfo; ++i) {
-        (*prototype)->abslineinfo[i].pc   = poke_next_byte(file_bytes) & ~0x80;
+        (*prototype)->abslineinfo[i].pc = poke_next_byte(file_bytes) & ~0x80;
         (*prototype)->abslineinfo[i].line = poke_next_byte(file_bytes) & ~0x80;
     }
 
@@ -550,8 +545,8 @@ void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     (*prototype)->sizelocvars = poke_next_byte(file_bytes) & ~0x80;
 
     for (int i = 0; i < (*prototype)->sizelocvars; ++i) {
-        int      size                    = poke_next_byte(file_bytes) & ~0x80;
-        uint8_t *sizelocvars             = poke_bytes(file_bytes, size - 1);
+        int size = poke_next_byte(file_bytes) & ~0x80;
+        uint8_t *sizelocvars = poke_bytes(file_bytes, size - 1);
         (*prototype)->locvars[i].varname = safe_malloc(size);
 
         for (int j = 0; j < size - 1; ++j)
@@ -562,15 +557,15 @@ void dump_debug(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
         free(sizelocvars);
 
         (*prototype)->locvars[i].startpc = poke_next_byte(file_bytes) & ~0x80;
-        (*prototype)->locvars[i].endpc   = poke_next_byte(file_bytes) & ~0x80;
+        (*prototype)->locvars[i].endpc = poke_next_byte(file_bytes) & ~0x80;
     }
 
     // dumpInt(D, f->sizeupvalues)
     (*prototype)->sizeupvalues = poke_next_byte(file_bytes) & ~0x80;
 
     for (int i = 0; i < (*prototype)->sizeupvalues; ++i) {
-        int      size                  = poke_next_byte(file_bytes) & ~0x80;
-        uint8_t *name                  = poke_bytes(file_bytes, size - 1);
+        int size = poke_next_byte(file_bytes) & ~0x80;
+        uint8_t *name = poke_bytes(file_bytes, size - 1);
         (*prototype)->upvalues[i].name = safe_malloc(size);
 
         for (int j = 0; j < size - 1; ++j)
@@ -636,16 +631,16 @@ void cleanup_prototypes(s_Func_Prototype **prototypes) {
 void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     dump_header(file_bytes);
 
-    prototype                 = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
-    *prototype                = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
+    prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
+    *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
     (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
-    (*prototype)->lineinfo    = safe_malloc(file_bytes->length * sizeof(uint8_t));
-    (*prototype)->code        = safe_malloc(file_bytes->length * sizeof(uint32_t));
-    (*prototype)->upvalues    = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
-    (*prototype)->locvars     = safe_malloc(file_bytes->length * sizeof(s_LocVar));
-    (*prototype)->source      = safe_malloc(file_bytes->length * sizeof(char));
-    (*prototype)->nested      = false;
-    (*prototype)->scopecount  = 1;
+    (*prototype)->lineinfo = safe_malloc(file_bytes->length * sizeof(uint8_t));
+    (*prototype)->code = safe_malloc(file_bytes->length * sizeof(uint32_t));
+    (*prototype)->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+    (*prototype)->locvars = safe_malloc(file_bytes->length * sizeof(s_LocVar));
+    (*prototype)->source = safe_malloc(file_bytes->length * sizeof(char));
+    (*prototype)->nested = false;
+    (*prototype)->scopecount = 1;
 
     parse_functions(file_bytes, prototype, false, (*prototype)->scopecount);
     match_instructions(prototype);

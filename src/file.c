@@ -10,7 +10,7 @@
 s_Filebytes *read_file_bytes(const char *file_name) {
     assert(strlen(file_name) != 0);
 
-    FILE    *fp;
+    FILE *fp;
     uint8_t *buffer;
     long int length;
 
