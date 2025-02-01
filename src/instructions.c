@@ -65,8 +65,8 @@ void match_instructions(s_Func_Prototype **p) {
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
             break;
         case OP_GETTABUP:
-            printf("%-10s %d %d %d", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
-            printf("\t; %-10s\n", upvalues[GET_B(code)].name);
+            printf("%-10s %d %d %d\t; %-*s\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), 5,
+                upvalues[GET_B(code)].name);
             break;
         case OP_GETTABLE:
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
@@ -200,9 +200,9 @@ void match_instructions(s_Func_Prototype **p) {
         case OP_TBC:
             printf("%-10s %d\n", opnames[opcode], GET_A(code));
             break;
+        // this is wrong. need to take into account closures
         case OP_JMP:
-            printf("%-10s %d", opnames[opcode], GET_sJ(code));
-            printf("\t; to %-10d\n", GET_sJ(code) + i + 2);
+            printf("%-10s %d\t; to %-.*d\n", opnames[opcode], GET_sJ(code), 2, GET_sJ(code) + i + 2);
             break;
         case OP_EQ:
             printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
@@ -256,8 +256,7 @@ void match_instructions(s_Func_Prototype **p) {
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
             break;
         case OP_FORPREP:
-            printf("%-10s %d %d", opnames[opcode], GET_A(code), GET_Bx(code));
-            printf("\t; exit to %-10d\n", i + GET_Bx(code) + 3);
+            printf("%-10s %d %d\t; exit to %-10d\n", opnames[opcode], GET_A(code), GET_Bx(code), i + GET_Bx(code) + 3);
             break;
         case OP_TFORPREP:
             printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));

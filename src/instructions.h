@@ -21,7 +21,9 @@
 #define sJ_SIZE 25
 
 #define MAXARG_C ((1 << C_SIZE) - 1)
+#define MAXARG_sJ ((1 << sJ_SIZE) - 1)
 #define OFFSET_sC (MAXARG_C >> 1)
+#define OFFSET_sJ (MAXARG_sJ >> 1)
 #define int2sC(i) ((i) + OFFSET_sC)
 #define sC2int(i) ((i) - OFFSET_sC)
 
@@ -32,7 +34,7 @@
 #define GET_Bx(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1ffff)
 #define GET_sBx(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1ffff) - (((1 << Bx_SIZE) - 1) >> 1))
 #define GET_Ax(t) ((t >> OP_SIZE) & 0x7FFFFF)
-#define GET_sJ(t) ((t >> OP_SIZE) & 0x7FFFFF)
+#define GET_sJ(t) (((t >> OP_SIZE) & 0x1ffffff) - OFFSET_sJ)
 #define GET_sC(t) sC2int(GET_C(t))
 #define GET_sB(t) sC2int(GET_B(t))
 #define GET_k(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1))
@@ -47,6 +49,13 @@ static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX
     "EQK", "EQI", "LTI", "LEI", "GTI", "GEI", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "RETURN0", "RETURN1",
     "FORLOOP", "FORPREP", "TFORPREP", "TFORCALL", "TFORLOOP", "SETLIST", "CLOSURE", "VARARG", "VARARGPREP", "EXTRAARG",
     NULL};
+
+/* From: https://www.lua.org/doc/jucs05.pdf "Section 7 The Virtual Machine"
+ * R(X) means the Xth register.
+ * K(X) means the Xth constant.
+ * RK(X) means either R(X) or K(X-k), depending on the value of X — it is R(X) for values of X smaller than k (a build
+ * parameter, typically 250). G[X] means the field X in the table of globals. U[X] means the Xth upvalue.
+ * */
 
 /*
  *         3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
