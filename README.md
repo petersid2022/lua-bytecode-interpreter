@@ -7,6 +7,8 @@ To better understand how the `luac` compiler works, I found it invaluable to run
 * `luac` compiles Lua source code to Lua bytecode: https://www.lua.org/source/5.4/luac.c.html
 * All of the Lua virtual machine opcodes: https://www.lua.org/source/5.4/lopcodes.h.html
 * How luac saves precompiled Lua chunks: https://www.lua.org/source/5.4/ldump.c.html
+* The Implementation of Lua 5.0: https://www.lua.org/doc/jucs05.pdf
+* Garbage Collection in Lua: https://www.lua.org/wshop18/Ierusalimschy.pdf
 
 ## License
 
