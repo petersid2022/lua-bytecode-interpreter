@@ -9,8 +9,8 @@ To better understand how the `luac` compiler works, I found it invaluable to run
 * How luac saves precompiled Lua chunks: https://www.lua.org/source/5.4/ldump.c.html
 * The Implementation of Lua 5.0: https://www.lua.org/doc/jucs05.pdf
 * Garbage Collection in Lua: https://www.lua.org/wshop18/Ierusalimschy.pdf
-* https://en.m.wikibooks.org/wiki/Creating_a_Virtual_Machine/Register_VM_in_C
-* https://en.m.wikipedia.org/wiki/Register_allocation
+* Creating a Virtual Machine/Register VM in C: https://en.m.wikibooks.org/wiki/Creating_a_Virtual_Machine/Register_VM_in_C
+* Register allocation: https://en.m.wikipedia.org/wiki/Register_allocation
 
 ## License
 
