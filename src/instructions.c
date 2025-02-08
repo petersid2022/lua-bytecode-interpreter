@@ -12,8 +12,9 @@ void match_instructions(s_Func_Prototype **p) {
     int amount = (*p)->sizecode;
     bool is_nested = (*p)->nested;
 
-    if (is_nested)
+    if (is_nested) {
         amount += (*(*p)->p)->sizecode;
+    }
 
     uint32_t *instructions = malloc(amount * sizeof(uint32_t));
     s_Upvalue_Desc *upvalues = malloc(amount * sizeof(s_Upvalue_Desc));
