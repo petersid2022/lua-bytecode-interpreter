@@ -39,8 +39,6 @@
 #define GET_sB(t) sC2int(GET_B(t))
 #define GET_k(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1))
 
-#define COMMENT "\t\t; "
-
 static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE", "LFALSESKIP",
     "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI", "GETFIELD", "SETTABUP", "SETTABLE",
     "SETI", "SETFIELD", "NEWTABLE", "SELF", "ADDI", "ADDK", "SUBK", "MULK", "MODK", "POWK", "DIVK", "IDIVK", "BANDK",

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,6 +8,21 @@
 
 #include "instructions.h"
 #include "utils.h"
+
+static inline void print_instruction(const char *opname, int count, const char *comment, ...) {
+    va_list args;
+    va_start(args, comment);
+
+    fprintf(stdout, "%-10s", opname);
+
+    for (int i = 0; i < count; i++) {
+        fprintf(stdout, " %-2d", va_arg(args, int));
+    }
+
+    fprintf(stdout, "%s\n", comment ? comment : "");
+
+    va_end(args);
+}
 
 void match_instructions(s_Func_Prototype **p) {
     int amount = (*p)->sizecode;
@@ -30,263 +46,271 @@ void match_instructions(s_Func_Prototype **p) {
     for (int i = 0; i < amount; i++) {
         uint32_t code = instructions[i];
         uint8_t opcode = code & 0x7F;
+        char *comment = calloc(1024, sizeof(char));
 
         switch (opcode) {
         case OP_MOVE:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_LOADI:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_sBx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
             break;
         case OP_LOADF:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_sBx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
             break;
         case OP_LOADK:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
             break;
         case OP_LOADKX:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_LOADFALSE:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_LFALSESKIP:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_LOADTRUE:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_LOADNIL:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_GETUPVAL:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_SETUPVAL:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_GETTABUP:
-            printf("%-10s %d %d %d\t; %-*s\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), 5,
-                upvalues[GET_B(code)].name);
+            sprintf(comment, "; %s", upvalues[GET_B(code)].name);
+            print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_GETTABLE:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_GETI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_GETFIELD:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABUP:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABLE:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETFIELD:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_NEWTABLE:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SELF:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_ADDI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_sC(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
             break;
         case OP_ADDK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SUBK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MULK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MODK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_POWK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_DIVK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_IDIVK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BANDK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BORK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BXORK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SHRI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_sC(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
             break;
         case OP_SHLI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_sC(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
             break;
         case OP_ADD:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SUB:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MUL:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MOD:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_POW:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_DIV:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_IDIV:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BAND:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BOR:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_BXOR:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SHL:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SHR:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MMBIN:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_MMBINI:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_C(code), GET_k(code));
+            sprintf(comment, "; %d", GET_k(code));
+            print_instruction(opnames[opcode], 3, (const char *) comment, GET_A(code), GET_sB(code), GET_C(code));
             break;
         case OP_MMBINK:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
+            sprintf(comment, "; %d", GET_k(code));
+            print_instruction(opnames[opcode], 3, (const char *) comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_UNM:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_BNOT:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_NOT:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_LEN:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_CONCAT:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_B(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_CLOSE:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_TBC:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         // this is wrong. need to take into account closures
         case OP_JMP:
-            printf("%-10s %d\t; to %-.*d\n", opnames[opcode], GET_sJ(code), 2, GET_sJ(code) + i + 2);
+            sprintf(comment, "; to %d", GET_sJ(code) + i + 2);
+            print_instruction(opnames[opcode], 2, comment, GET_sJ(code), 2);
             break;
         case OP_EQ:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
             break;
         case OP_LT:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
             break;
         case OP_LE:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
             break;
         case OP_EQK:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
             break;
         case OP_EQI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
             break;
         case OP_LTI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
             break;
         case OP_LEI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
             break;
         case OP_GTI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
             break;
         case OP_GEI:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_sB(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
             break;
         case OP_TEST:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_k(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_k(code));
             break;
         case OP_TESTSET:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_k(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
             break;
         case OP_CALL:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_TAILCALL:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
+            sprintf(comment, "; %d", GET_k(code));
+            print_instruction(opnames[opcode], 3, (const char *) comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_RETURN:
-            printf("%-10s %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code));
+            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_RETURN0:
-            printf("%-10s\n", opnames[opcode]);
+            print_instruction(opnames[opcode], 0, NULL);
             break;
         case OP_RETURN1:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_FORLOOP:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
             break;
         case OP_FORPREP:
-            printf("%-10s %d %d\t; exit to %-10d\n", opnames[opcode], GET_A(code), GET_Bx(code), i + GET_Bx(code) + 3);
+            sprintf(comment, "; exit to %d", i + GET_Bx(code) + 3);
+            print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
             break;
         case OP_TFORPREP:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
             break;
         case OP_TFORCALL:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_C(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
             break;
         case OP_TFORLOOP:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
             break;
         case OP_SETLIST:
-            printf("%-10s %d %d %d %d\n", opnames[opcode], GET_A(code), GET_B(code), GET_C(code), GET_k(code));
+            print_instruction(opnames[opcode], 4, NULL, GET_A(code), GET_B(code), GET_C(code), GET_k(code));
             break;
         case OP_CLOSURE:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_Bx(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
             break;
         case OP_VARARG:
-            printf("%-10s %d %d\n", opnames[opcode], GET_A(code), GET_C(code));
+            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
             break;
         case OP_VARARGPREP:
-            printf("%-10s %d\n", opnames[opcode], GET_A(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
         case OP_EXTRAARG:
-            printf("%-10s %d\n", opnames[opcode], GET_Ax(code));
+            print_instruction(opnames[opcode], 1, NULL, GET_Ax(code));
             break;
         default:
             printf("Failed to match opcode: %s\n", opnames[opcode]);
             break;
         };
+
+        free(comment);
     }
 
     free(instructions);
