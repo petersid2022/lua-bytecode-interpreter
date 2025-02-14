@@ -19,7 +19,7 @@ static inline void print_instruction(const char *opname, int count, const char *
         fprintf(stdout, " %-2d", va_arg(args, int));
     }
 
-    fprintf(stdout, "%s\n", comment ? comment : "");
+    fprintf(stdout, "\t%s\n", comment ? comment : "");
 
     va_end(args);
 }
