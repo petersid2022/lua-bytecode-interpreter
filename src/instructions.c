@@ -9,6 +9,24 @@
 #include "instructions.h"
 #include "utils.h"
 
+/* TODO Implement this properly
+static inline char *print_constant(s_Func_Prototype **p, int i) {
+    const s_TValue *o = &(*p)->k[i];
+    switch (ttypetag(o)) {
+    case 19: // LUA_VNUMFLT
+    case 3:  // LUA_VNUMINT
+        printf("not implemented");
+        break;
+    case 20: // LUA_VSHRSTR
+    case 4:  // LUA_VLNGSTR
+        print_string(tsvalue(o));
+        break;
+    default:
+        break;
+    }
+}
+*/
+
 static inline void print_instruction(const char *opname, int count, const char *comment, ...) {
     va_list args;
     va_start(args, comment);
@@ -25,6 +43,7 @@ static inline void print_instruction(const char *opname, int count, const char *
 }
 
 void match_instructions(s_Func_Prototype **p) {
+    printf("\n");
     int amount = (*p)->sizecode;
     bool is_nested = (*p)->nested;
 
@@ -96,7 +115,8 @@ void match_instructions(s_Func_Prototype **p) {
             print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABUP:
-            print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+            sprintf(comment, "; %s", UPVALNAME(GET_A(code)));
+            print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABLE:
             print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
@@ -294,7 +314,8 @@ void match_instructions(s_Func_Prototype **p) {
             print_instruction(opnames[opcode], 4, NULL, GET_A(code), GET_B(code), GET_C(code), GET_k(code));
             break;
         case OP_CLOSURE:
-            print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
+            sprintf(comment, "; %p", (const void *) (*p)->p[GET_Bx(code)]);
+            print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
             break;
         case OP_VARARG:
             print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
@@ -304,6 +325,9 @@ void match_instructions(s_Func_Prototype **p) {
             break;
         case OP_EXTRAARG:
             print_instruction(opnames[opcode], 1, NULL, GET_Ax(code));
+            break;
+        case OP_NULL:
+            printf("\n");
             break;
         default:
             printf("Failed to match opcode: %s\n", opnames[opcode]);
@@ -451,6 +475,7 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
         int size;
         uint8_t *lua_string, *lua_int, *lua_num;
         uint8_t tt = poke_next_byte(file_bytes); /* type tag of a TValue */
+                                                 // ((*prototype)->k)->tt_ = tt;
 
         switch (tt) {
         /*
@@ -610,6 +635,21 @@ void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool
     dump_upvalues(file_bytes, prototype);
     dump_protos(file_bytes, prototype);
     dump_debug(file_bytes, prototype);
+    (*prototype)->code[(*prototype)->sizecode] = OP_NULL;
+    (*prototype)->sizecode += 1;
+}
+
+void allocate_prototypes(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
+    *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
+    (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
+    // (*prototype)->k = safe_malloc(file_bytes->length * sizeof(s_TValue));
+    (*prototype)->lineinfo = safe_malloc(file_bytes->length * sizeof(uint8_t));
+    (*prototype)->code = safe_malloc(file_bytes->length * sizeof(uint32_t));
+    (*prototype)->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
+    (*prototype)->locvars = safe_malloc(file_bytes->length * sizeof(s_LocVar));
+    (*prototype)->source = safe_malloc(file_bytes->length * sizeof(char));
+    (*prototype)->nested = false;
+    (*prototype)->scopecount = 1;
 }
 
 void cleanup_prototypes(s_Func_Prototype **prototypes) {
@@ -625,6 +665,7 @@ void cleanup_prototypes(s_Func_Prototype **prototypes) {
     free((*prototypes)->abslineinfo);
     free((*prototypes)->lineinfo);
     free((*prototypes)->code);
+    // free((*prototypes)->k);
 
     for (int i = 0; i < (*prototypes)->sizep; i++) {
         s_Func_Prototype *proto = (*prototypes)->p[i];
@@ -643,6 +684,7 @@ void cleanup_prototypes(s_Func_Prototype **prototypes) {
         free(proto->abslineinfo);
         free(proto->lineinfo);
         free(proto->code);
+        // free(proto->k);
 
         free((*prototypes)->p);
         free(proto);
@@ -654,18 +696,8 @@ void cleanup_prototypes(s_Func_Prototype **prototypes) {
 
 void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     dump_header(file_bytes);
-
     prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
-    *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
-    (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
-    (*prototype)->lineinfo = safe_malloc(file_bytes->length * sizeof(uint8_t));
-    (*prototype)->code = safe_malloc(file_bytes->length * sizeof(uint32_t));
-    (*prototype)->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
-    (*prototype)->locvars = safe_malloc(file_bytes->length * sizeof(s_LocVar));
-    (*prototype)->source = safe_malloc(file_bytes->length * sizeof(char));
-    (*prototype)->nested = false;
-    (*prototype)->scopecount = 1;
-
+    allocate_prototypes(file_bytes, prototype);
     parse_functions(file_bytes, prototype, false, (*prototype)->scopecount);
     match_instructions(prototype);
     cleanup_prototypes(prototype);

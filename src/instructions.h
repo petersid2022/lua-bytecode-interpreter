@@ -38,6 +38,14 @@
 #define GET_sC(t) sC2int(GET_C(t))
 #define GET_sB(t) sC2int(GET_B(t))
 #define GET_k(t) (((t >> (OP_SIZE + A_SIZE)) & 0x1))
+#define UPVALNAME(x) (((*p)->upvalues[x].name) ? (*p)->upvalues[x].name : "-")
+
+/* Type tag of a TValue (bits 0-3 for tags + variant bits 4-5)
+ * See lua/lua-5.4.7/src/lobject.h
+ * */
+#define rawtt(o) ((o)->tt_)
+#define withvariant(t) ((t) & 0x3F)
+#define ttypetag(o) withvariant(rawtt(o))
 
 static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE", "LFALSESKIP",
     "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI", "GETFIELD", "SETTABUP", "SETTABLE",
@@ -148,27 +156,47 @@ typedef enum {
     OP_CLOSURE,    /*	A Bx	R[A] := closure(KPROTO[Bx])    */
     OP_VARARG,     /*	A C	R[A], R[A+1], ..., R[A+C-2] = vararg		*/
     OP_VARARGPREP, /*A	(adjust vararg parameters)			*/
-    OP_EXTRAARG    /*	Ax	extra (larger) argument for previous opcode */
+    OP_EXTRAARG,   /*	Ax	extra (larger) argument for previous opcode */
+    OP_NULL
 } e_Opcodes;
 
 /* Description of an upvalue for function prototypes */
-typedef struct Upvaldesc {
+typedef struct s_Upvalue_Desc {
     uint8_t instack; /* whether it is in stack (register) */
     uint8_t idx;     /* index of upvalue (in stack or in outer function's list) */
     uint8_t kind;    /* kind of corresponding variable */
     char *name;      /* upvalue name (for debug information) */
 } s_Upvalue_Desc;
 
-typedef struct {
+typedef struct s_AbsLineInfo {
     int pc;
     int line;
 } s_AbsLineInfo;
 
-typedef struct LocVar {
+typedef struct s_LocVar {
     int startpc; /* first point where variable is active */
     int endpc;   /* first point where variable is dead */
     char *varname;
 } s_LocVar;
+
+/* TODO Implement this properly
+// Union of all Lua values
+typedef union s_Value {
+    struct GCObject *gc; // collectable objects
+    void *p; 		// light userdata
+    lua_CFunction f;     // light C functions
+    lua_Integer i;       // integer numbers
+    lua_Number n;        // float numbers
+    // not used, but may avoid warnings for uninitialized value
+    uint8_t ub;
+} s_Value;
+
+// Tagged Values. The basic representation of values in Lua: an actual value plus a tag with its type.
+typedef struct s_TValue {
+    // s_Value value_;
+    uint8_t tt_;
+} s_TValue;
+*/
 
 /* Function Prototypes
  * encapsulate all the necessary
@@ -194,7 +222,8 @@ typedef struct s_Func_Prototype {
     struct s_Func_Prototype **p; /* functions defined inside the function */
     s_AbsLineInfo *abslineinfo;  /* idem */
     s_Upvalue_Desc *upvalues;    /* variables captured from an enclosing scope */
-    uint32_t *code;              /* all instructions are unsigned 32-bit integers. */
+    // s_TValue *k;                 /* constants used by the function */
+    uint32_t *code; /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
 /* Match instruction opcodes and print the bytecode listing */
