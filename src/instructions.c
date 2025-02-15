@@ -9,23 +9,25 @@
 #include "instructions.h"
 #include "utils.h"
 
-/* TODO Implement this properly
-static inline char *print_constant(s_Func_Prototype **p, int i) {
-    const s_TValue *o = &(*p)->k[i];
+static inline void print_constant(s_Func_Prototype **p, int i) {
+    (void) p;
+    (void) i;
+    const s_TValue *o;
+    // o = &((*p)->k[i]);
     switch (ttypetag(o)) {
-    case 19: // LUA_VNUMFLT
-    case 3:  // LUA_VNUMINT
-        printf("not implemented");
+    case LUA_VNUMFLT:
+    case LUA_VNUMINT:
+        printf("\nLUA_VNUMINT or LUA_VNUMFLT\n");
         break;
-    case 20: // LUA_VSHRSTR
-    case 4:  // LUA_VLNGSTR
-        print_string(tsvalue(o));
+    case LUA_VSHRSTR:
+    case LUA_VLNGSTR:
+        printf("\nLUA_VLNGSTR or LUA_VSHRSTR\n");
         break;
     default:
+        printf("\nNo type detected (TValue)\n");
         break;
     }
 }
-*/
 
 static inline void print_instruction(const char *opname, int count, const char *comment, ...) {
     va_list args;
@@ -43,7 +45,6 @@ static inline void print_instruction(const char *opname, int count, const char *
 }
 
 void match_instructions(s_Func_Prototype **p) {
-    printf("\n");
     int amount = (*p)->sizecode;
     bool is_nested = (*p)->nested;
 
@@ -453,6 +454,8 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
     // dumpInt(D, f->sizecode)
     (*prototype)->sizecode = poke_next_byte(file_bytes) & ~0x80;
 
+    (*prototype)->code[(*prototype)->sizecode] = 0x53; // OP_NULL
+
     // dumpVector(D, f->code, f->sizecode);
     printf("\nprototype->code:\n");
     uint8_t *code = poke_bytes(file_bytes, (*prototype)->sizecode * 4);
@@ -462,6 +465,8 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
         (*prototype)->code[i / 4] = instruction;
         print_binary(instruction, 32);
     }
+
+    (*prototype)->sizecode += 1;
 
     free(code);
 }
@@ -475,14 +480,14 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
         int size;
         uint8_t *lua_string, *lua_int, *lua_num;
         uint8_t tt = poke_next_byte(file_bytes); /* type tag of a TValue */
-                                                 // ((*prototype)->k)->tt_ = tt;
+        // ((*prototype)->k)->tt_ = tt;
 
         switch (tt) {
         /*
          * There's a really annoying way to calculate these
          * Check lobject.h and ldump.c
          */
-        case 19: /* LUA_VNUMFLT = float numbers */
+        case LUA_VNUMFLT: /* LUA_VNUMFLT = float numbers */
             printf("LUA_VNUMFLT: ");
             lua_num = poke_bytes(file_bytes, LUAC_NUM_LEN);
             for (size_t i = 0; i < LUAC_NUM_LEN; ++i) {
@@ -490,9 +495,10 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
                     printf(" ");
                 printf("%.2x", lua_num[i]);
             }
+            // ((*prototype)->k)->value_.n = 5.0;
             free(lua_num);
             break;
-        case 3: /* LUA_VNUMINT = integer numbers */
+        case LUA_VNUMINT: /* LUA_VNUMINT = integer numbers */
             printf("LUA_VNUMINT: ");
             lua_int = poke_bytes(file_bytes, LUAC_INT_LEN);
             for (size_t i = 0; i < LUAC_INT_LEN; ++i) {
@@ -500,17 +506,18 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
                     printf(" ");
                 printf("%.2x", lua_int[i]);
             }
+            // ((*prototype)->k)->value_.i = 5;
             free(lua_int);
             break;
-        case 20: /* LUA_VSHRSTR = short strings */
-        case 4:  /* LUA_VLNGSTR = long strings */
+        case LUA_VSHRSTR: /* LUA_VSHRSTR = short strings */
+        case LUA_VLNGSTR: /* LUA_VLNGSTR = long strings */
             size = poke_next_byte(file_bytes) & ~0x80;
-
             printf("LUA_VLNGSTR: ");
             lua_string = poke_bytes(file_bytes, size - 1);
             for (int i = 0; i < size - 1; ++i) {
                 printf("%c", lua_string[i]);
             }
+            // ((*prototype)->k)->value_.p = (void *) "Hello";
             free(lua_string);
             break;
         default:
@@ -635,8 +642,8 @@ void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool
     dump_upvalues(file_bytes, prototype);
     dump_protos(file_bytes, prototype);
     dump_debug(file_bytes, prototype);
-    (*prototype)->code[(*prototype)->sizecode] = OP_NULL;
-    (*prototype)->sizecode += 1;
+    // (*prototype)->code[(*prototype)->sizecode] = OP_NULL;
+    // (*prototype)->sizecode += 1;
 }
 
 void allocate_prototypes(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {

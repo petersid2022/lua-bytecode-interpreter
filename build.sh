@@ -10,4 +10,4 @@ OUTPUT="./lbi"
 
 $CC $IFLAGS $CFLAGS -o $OUTPUT $SRC
 
-$OUTPUT lua/luac.out
+$OUTPUT fibonacci/luac.out

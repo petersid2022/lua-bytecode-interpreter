@@ -10,6 +10,15 @@
 #define LUAC_INT_LEN 8
 #define LUAC_NUM_LEN 8
 
+#define LUA_TNUMBER 3
+#define LUA_TSTRING 4
+
+#define makevariant(t, v) ((t) | ((v) << 4))
+#define LUA_VSHRSTR makevariant(LUA_TSTRING, 0) /* short strings */
+#define LUA_VLNGSTR makevariant(LUA_TSTRING, 1) /* long strings */
+#define LUA_VNUMINT makevariant(LUA_TNUMBER, 0) /* integer numbers */
+#define LUA_VNUMFLT makevariant(LUA_TNUMBER, 1) /* float numbers */
+
 #define OP_SIZE 7
 #define A_SIZE 8
 #define K_SIZE 1
@@ -179,24 +188,23 @@ typedef struct s_LocVar {
     char *varname;
 } s_LocVar;
 
-/* TODO Implement this properly
-// Union of all Lua values
+/* Union of all Lua values */
 typedef union s_Value {
-    struct GCObject *gc; // collectable objects
-    void *p; 		// light userdata
-    lua_CFunction f;     // light C functions
-    lua_Integer i;       // integer numbers
-    lua_Number n;        // float numbers
-    // not used, but may avoid warnings for uninitialized value
-    uint8_t ub;
+    void *p;    // light userdata
+    int i;      // integer numbers
+    float n;    // float numbers
+    uint8_t ub; // not used, but may avoid warnings for uninitialized value
 } s_Value;
 
-// Tagged Values. The basic representation of values in Lua: an actual value plus a tag with its type.
+/*
+ * Tagged Values.
+ * The basic representation of values in Lua:
+ * an actual value plus a tag with its type.
+ * */
 typedef struct s_TValue {
-    // s_Value value_;
+    s_Value value_;
     uint8_t tt_;
 } s_TValue;
-*/
 
 /* Function Prototypes
  * encapsulate all the necessary
