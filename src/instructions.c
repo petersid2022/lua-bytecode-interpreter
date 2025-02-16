@@ -33,10 +33,10 @@ static inline void print_instruction(const char *opname, int count, const char *
     va_list args;
     va_start(args, comment);
 
-    fprintf(stdout, "%-10s", opname);
+    fprintf(stdout, "%-10s\t", opname);
 
     for (int i = 0; i < count; i++) {
-        fprintf(stdout, " %-2d", va_arg(args, int));
+        fprintf(stdout, "%-4d", va_arg(args, int));
     }
 
     fprintf(stdout, "\t%s\n", comment ? comment : "");
@@ -70,6 +70,10 @@ void match_instructions(s_Func_Prototype **p) {
         uint32_t code = instructions[i];
         uint8_t opcode = code & 0x7F;
         char *comment = calloc(1024, sizeof(char));
+
+        if (i > 0) {
+            printf("\t%d\t", i);
+        }
 
         switch (opcode) {
         case OP_MOVE:
@@ -246,7 +250,7 @@ void match_instructions(s_Func_Prototype **p) {
             break;
         // this is wrong. need to take into account closures
         case OP_JMP:
-            sprintf(comment, "; to %d", GET_sJ(code) + i + 2);
+            sprintf(comment, "; to %d", GET_sJ(code) + i + 1);
             print_instruction(opnames[opcode], 2, comment, GET_sJ(code), 2);
             break;
         case OP_EQ:
