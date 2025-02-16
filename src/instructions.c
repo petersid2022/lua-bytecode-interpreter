@@ -46,11 +46,12 @@ static inline void print_instruction(const char *opname, int count, const char *
 
 void match_instructions(s_Func_Prototype **p) {
     int amount = (*p)->sizecode;
+    /*
     bool is_nested = (*p)->nested;
-
     if (is_nested) {
         amount += (*(*p)->p)->sizecode;
     }
+    */
 
     uint32_t *instructions = malloc(amount * sizeof(uint32_t));
     s_Upvalue_Desc *upvalues = malloc(amount * sizeof(s_Upvalue_Desc));
@@ -58,10 +59,12 @@ void match_instructions(s_Func_Prototype **p) {
     memcpy(instructions, (*p)->code, (*p)->sizecode * sizeof(uint32_t));
     memcpy(upvalues, (*p)->upvalues, (*p)->sizeupvalues * sizeof(s_Upvalue_Desc));
 
+    /*
     if (is_nested) {
         memcpy(instructions + (*p)->sizecode, (*(*p)->p)->code, (*(*p)->p)->sizecode * sizeof(uint32_t));
         memcpy(upvalues + (*p)->sizeupvalues, (*(*p)->p)->upvalues, (*(*p)->p)->sizeupvalues * sizeof(s_Upvalue_Desc));
     }
+    */
 
     for (int i = 0; i < amount; i++) {
         uint32_t code = instructions[i];
@@ -328,7 +331,12 @@ void match_instructions(s_Func_Prototype **p) {
             print_instruction(opnames[opcode], 1, NULL, GET_Ax(code));
             break;
         case OP_NULL:
-            printf("\n");
+            // clang-format off
+            sprintf(comment, "<%d,%d> (%d instructions at %p)", (*p)->linedefined, (*p)->lastlinedefined, (*p)->sizecode - 1, (void *) (*p));
+            printf(BOLD "\n%s %s\n", ((*p)->linedefined == 0) ? "main" : "function", comment);
+            printf("%d%s param%s, %d slot%s, %d upvalue%s, ", (int)((*p)->numparams),(*p)->is_vararg?"+":"",SS((*p)->numparams), S((*p)->maxstacksize),S((*p)->sizeupvalues));
+            printf("%d local%s, %d constant%s, %d function%s\n" RESET, S((*p)->sizelocvars),S((*p)->sizek),S((*p)->sizep));
+            // clang-format on
             break;
         default:
             printf("Failed to match opcode: %s\n", opnames[opcode]);
@@ -454,7 +462,7 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
     // dumpInt(D, f->sizecode)
     (*prototype)->sizecode = poke_next_byte(file_bytes) & ~0x80;
 
-    (*prototype)->code[(*prototype)->sizecode] = 0x53; // OP_NULL
+    (*prototype)->code[0] = 0x53; // OP_NULL
 
     // dumpVector(D, f->code, f->sizecode);
     printf("\nprototype->code:\n");
@@ -462,7 +470,7 @@ void dump_function(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool i
     for (int i = 0; i < (*prototype)->sizecode * 4; i += 4) {
         uint32_t instruction = (uint32_t) code[i] | ((uint32_t) code[i + 1] << 8) | ((uint32_t) code[i + 2] << 16) |
             ((uint32_t) code[i + 3] << 24);
-        (*prototype)->code[i / 4] = instruction;
+        (*prototype)->code[i / 4 + 1] = instruction;
         print_binary(instruction, 32);
     }
 
@@ -642,8 +650,7 @@ void parse_functions(s_Filebytes *file_bytes, s_Func_Prototype **prototype, bool
     dump_upvalues(file_bytes, prototype);
     dump_protos(file_bytes, prototype);
     dump_debug(file_bytes, prototype);
-    // (*prototype)->code[(*prototype)->sizecode] = OP_NULL;
-    // (*prototype)->sizecode += 1;
+    match_instructions(prototype);
 }
 
 void allocate_prototypes(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
@@ -706,6 +713,6 @@ void parse_hexdump(s_Filebytes *file_bytes, s_Func_Prototype **prototype) {
     prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype *));
     allocate_prototypes(file_bytes, prototype);
     parse_functions(file_bytes, prototype, false, (*prototype)->scopecount);
-    match_instructions(prototype);
+    // match_instructions(prototype);
     cleanup_prototypes(prototype);
 }

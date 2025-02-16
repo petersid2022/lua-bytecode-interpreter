@@ -5,6 +5,15 @@
 
 #include "file.h"
 
+#define SS(x) ((x == 1) ? "" : "s")
+#define S(x) (int) (x), SS(x)
+
+#define GRN "\033[0;32m"
+#define RED "\033[0;31m"
+#define BOLD "\033[1m"
+#define ITALIC "\033[3m"
+#define RESET "\033[0m"
+
 #define HEADER_SIGNATURE_LEN 4
 #define LUAC_DATA_LEN 6
 #define LUAC_INT_LEN 8
@@ -216,6 +225,7 @@ typedef struct s_Func_Prototype {
     int sizeupvalues;
     int sizecode;
     int numparams;
+    int is_vararg;
     int sizelineinfo;
     int lastlinedefined;
     int linedefined;
