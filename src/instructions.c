@@ -36,7 +36,7 @@ static inline void print_instruction(const char *opname, int count, const char *
     fprintf(stdout, "%-10s\t", opname);
 
     for (int i = 0; i < count; i++) {
-        fprintf(stdout, "%-4d", va_arg(args, int));
+        fprintf(stdout, "%-2d", va_arg(args, int));
     }
 
     fprintf(stdout, "\t%s\n", comment ? comment : "");
@@ -248,10 +248,9 @@ void match_instructions(s_Func_Prototype **p) {
         case OP_TBC:
             print_instruction(opnames[opcode], 1, NULL, GET_A(code));
             break;
-        // this is wrong. need to take into account closures
         case OP_JMP:
             sprintf(comment, "; to %d", GET_sJ(code) + i + 1);
-            print_instruction(opnames[opcode], 2, comment, GET_sJ(code), 2);
+            print_instruction(opnames[opcode], 1, comment, GET_sJ(code));
             break;
         case OP_EQ:
             print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
