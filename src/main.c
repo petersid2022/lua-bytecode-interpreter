@@ -1,13 +1,22 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "file.h"
 #include "instructions.h"
 #include "utils.h"
 
 int main(int argc, char **argv) {
+    struct stat buf;
     if (argc != 2) {
+        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
+        return -1;
+    }
+
+    stat(argv[1], &buf);
+
+    if (S_ISDIR(buf.st_mode)) {
         fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
         return -1;
     }
