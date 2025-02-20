@@ -43,7 +43,7 @@
 #define OFFSET_sC (MAXARG_C >> 1)
 #define OFFSET_sJ (MAXARG_sJ >> 1)
 #define int2sC(i) ((i) + OFFSET_sC)
-#define sC2int(i) ((i) - OFFSET_sC)
+#define sC2int(i) ((i) -OFFSET_sC)
 
 #define GET_A(t) ((t >> OP_SIZE) & 0xff)
 #define GET_K(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1)
