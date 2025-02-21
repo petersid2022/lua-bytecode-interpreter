@@ -6,7 +6,7 @@
 #include "file.h"
 
 #define SS(x) ((x == 1) ? "" : "s")
-#define S(x) (int) (x), SS(x)
+#define S(x) (int)(x), SS(x)
 
 #define GRN "\033[0;32m"
 #define RED "\033[0;31m"
@@ -43,7 +43,7 @@
 #define OFFSET_sC (MAXARG_C >> 1)
 #define OFFSET_sJ (MAXARG_sJ >> 1)
 #define int2sC(i) ((i) + OFFSET_sC)
-#define sC2int(i) ((i) -OFFSET_sC)
+#define sC2int(i) ((i)-OFFSET_sC)
 
 #define GET_A(t) ((t >> OP_SIZE) & 0xff)
 #define GET_K(t) ((t >> (OP_SIZE + A_SIZE)) & 0x1)
@@ -65,20 +65,24 @@
 #define withvariant(t) ((t) & 0x3F)
 #define ttypetag(o) withvariant(rawtt(o))
 
-static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE", "LFALSESKIP",
-    "LOADTRUE", "LOADNIL", "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI", "GETFIELD", "SETTABUP", "SETTABLE",
-    "SETI", "SETFIELD", "NEWTABLE", "SELF", "ADDI", "ADDK", "SUBK", "MULK", "MODK", "POWK", "DIVK", "IDIVK", "BANDK",
-    "BORK", "BXORK", "SHRI", "SHLI", "ADD", "SUB", "MUL", "MOD", "POW", "DIV", "IDIV", "BAND", "BOR", "BXOR", "SHL",
-    "SHR", "MMBIN", "MMBINI", "MMBINK", "UNM", "BNOT", "NOT", "LEN", "CONCAT", "CLOSE", "TBC", "JMP", "EQ", "LT", "LE",
-    "EQK", "EQI", "LTI", "LEI", "GTI", "GEI", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "RETURN0", "RETURN1",
-    "FORLOOP", "FORPREP", "TFORPREP", "TFORCALL", "TFORLOOP", "SETLIST", "CLOSURE", "VARARG", "VARARGPREP", "EXTRAARG",
-    NULL};
+static const char *const opnames[] = {
+    "MOVE",       "LOADI",    "LOADF",    "LOADK",    "LOADKX",   "LOADFALSE", "LFALSESKIP", "LOADTRUE", "LOADNIL",
+    "GETUPVAL",   "SETUPVAL", "GETTABUP", "GETTABLE", "GETI",     "GETFIELD",  "SETTABUP",   "SETTABLE", "SETI",
+    "SETFIELD",   "NEWTABLE", "SELF",     "ADDI",     "ADDK",     "SUBK",      "MULK",       "MODK",     "POWK",
+    "DIVK",       "IDIVK",    "BANDK",    "BORK",     "BXORK",    "SHRI",      "SHLI",       "ADD",      "SUB",
+    "MUL",        "MOD",      "POW",      "DIV",      "IDIV",     "BAND",      "BOR",        "BXOR",     "SHL",
+    "SHR",        "MMBIN",    "MMBINI",   "MMBINK",   "UNM",      "BNOT",      "NOT",        "LEN",      "CONCAT",
+    "CLOSE",      "TBC",      "JMP",      "EQ",       "LT",       "LE",        "EQK",        "EQI",      "LTI",
+    "LEI",        "GTI",      "GEI",      "TEST",     "TESTSET",  "CALL",      "TAILCALL",   "RETURN",   "RETURN0",
+    "RETURN1",    "FORLOOP",  "FORPREP",  "TFORPREP", "TFORCALL", "TFORLOOP",  "SETLIST",    "CLOSURE",  "VARARG",
+    "VARARGPREP", "EXTRAARG", NULL};
 
 /* From: https://www.lua.org/doc/jucs05.pdf "Section 7 The Virtual Machine"
  * R(X) means the Xth register.
  * K(X) means the Xth constant.
- * RK(X) means either R(X) or K(X-k), depending on the value of X — it is R(X) for values of X smaller than k (a build
- * parameter, typically 250). G[X] means the field X in the table of globals. U[X] means the Xth upvalue.
+ * RK(X) means either R(X) or K(X-k), depending on the value of X — it is R(X)
+ * for values of X smaller than k (a build parameter, typically 250). G[X] means
+ * the field X in the table of globals. U[X] means the Xth upvalue.
  * */
 
 /*
@@ -91,7 +95,8 @@ static const char *const opnames[] = {"MOVE", "LOADI", "LOADF", "LOADK", "LOADKX
  * isJ                           sJ (signed)(25)            |   Op(7)     |
  * */
 
-typedef enum {
+typedef enum
+{
     OP_MOVE,       /*	A B	R[A] := R[B]					*/
     OP_LOADI,      /*	A sBx	R[A] := sBx					*/
     OP_LOADF,      /*	A sBx	R[A] := (lua_Number)sBx				*/
@@ -179,19 +184,22 @@ typedef enum {
 } e_Opcodes;
 
 /* Description of an upvalue for function prototypes */
-typedef struct s_Upvalue_Desc {
+typedef struct s_Upvalue_Desc
+{
     uint8_t instack; /* whether it is in stack (register) */
     uint8_t idx;     /* index of upvalue (in stack or in outer function's list) */
     uint8_t kind;    /* kind of corresponding variable */
     char *name;      /* upvalue name (for debug information) */
 } s_Upvalue_Desc;
 
-typedef struct s_AbsLineInfo {
+typedef struct s_AbsLineInfo
+{
     int pc;
     int line;
 } s_AbsLineInfo;
 
-typedef struct s_LocVar {
+typedef struct s_LocVar
+{
     int startpc; /* first point where variable is active */
     int endpc;   /* first point where variable is dead */
     char *varname;
@@ -210,7 +218,8 @@ typedef union s_Value {
  * The basic representation of values in Lua:
  * an actual value plus a tag with its type.
  * */
-typedef struct s_TValue {
+typedef struct s_TValue
+{
     s_Value value_;
     uint8_t tt_;
 } s_TValue;
@@ -219,7 +228,8 @@ typedef struct s_TValue {
  * encapsulate all the necessary
  * data for each compiled function
  * */
-typedef struct s_Func_Prototype {
+typedef struct s_Func_Prototype
+{
     int sizep;
     int sizek;
     int sizeupvalues;

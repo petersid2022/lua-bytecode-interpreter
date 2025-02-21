@@ -4,7 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct {
+typedef struct
+{
     int length;
     int cursor;
     uint8_t bytes[];

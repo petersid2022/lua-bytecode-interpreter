@@ -3,11 +3,12 @@
 
 #include "file.h"
 
-/* Simple malloc wrapper that returns a void pointer and if an error occurs it aborts execution */
+/* Simple malloc wrapper that returns a void pointer and if an error occurs it
+ * aborts execution */
 void *safe_malloc(size_t n);
 
-/* Simple printing utilities for printing out the hexbytes of the binary and for properly printing
- * out the binary representation of a number. */
+/* Simple printing utilities for printing out the hexbytes of the binary and for
+ * properly printing out the binary representation of a number. */
 void print_hexdump(const s_Filebytes *file_bytes);
 void print_binary(const unsigned long value, const int width);
 

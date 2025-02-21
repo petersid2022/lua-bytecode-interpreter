@@ -7,16 +7,19 @@
 #include "instructions.h"
 #include "utils.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     struct stat buf;
-    if (argc != 2) {
+    if (argc != 2)
+    {
         fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
         return -1;
     }
 
     stat(argv[1], &buf);
 
-    if (S_ISDIR(buf.st_mode)) {
+    if (S_ISDIR(buf.st_mode))
+    {
         fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
         return -1;
     }
@@ -26,7 +29,8 @@ int main(int argc, char **argv) {
 
     file_bytes = read_file_bytes(argv[1]);
 
-    if (file_bytes->bytes[1] != '\x4c') {
+    if (file_bytes->bytes[1] != '\x4c')
+    {
         fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
         free(file_bytes);
         return -1;
