@@ -9,23 +9,23 @@
 #include "instructions.h"
 #include "utils.h"
 
-static inline void print_constant(s_Func_Prototype **p, int i)
+static inline const char *print_constant(s_Func_Prototype **p, int i)
 {
     (void)p;
     (void)i;
-    const s_TValue *o = NULL;
+    const s_TValue *o = &((*p)->k[i]);
     switch (ttypetag(o))
     {
     case LUA_VNUMFLT:
     case LUA_VNUMINT:
-        printf("\nLUA_VNUMINT or LUA_VNUMFLT\n");
+        return "LUA_VNUMINT or LUA_VNUMFLT";
         break;
     case LUA_VSHRSTR:
     case LUA_VLNGSTR:
-        printf("\nLUA_VLNGSTR or LUA_VSHRSTR\n");
+        return "LUA_VLNGSTR or LUA_VSHRSTR";
         break;
     default:
-        printf("\nNo type detected (TValue)\n");
+        return NULL;
         break;
     }
 }
@@ -64,14 +64,14 @@ void match_instructions(s_Func_Prototype **p)
     memcpy(instructions, (*p)->code, (*p)->sizecode * sizeof(uint32_t));
     memcpy(upvalues, (*p)->upvalues, (*p)->sizeupvalues * sizeof(s_Upvalue_Desc));
 
+    // clang-format off
     /*
     if (is_nested) {
-        memcpy(instructions + (*p)->sizecode, (*(*p)->p)->code,
-    (*(*p)->p)->sizecode * sizeof(uint32_t)); memcpy(upvalues +
-    (*p)->sizeupvalues, (*(*p)->p)->upvalues, (*(*p)->p)->sizeupvalues *
-    sizeof(s_Upvalue_Desc));
+        memcpy(instructions + (*p)->sizecode, (*(*p)->p)->code, (*(*p)->p)->sizecode * sizeof(uint32_t));
+	memcpy(upvalues + (*p)->sizeupvalues, (*(*p)->p)->upvalues, (*(*p)->p)->sizeupvalues * sizeof(s_Upvalue_Desc));
     }
     */
+    // clang-format on
 
     for (int i = 0; i < amount; i++)
     {
@@ -120,7 +120,7 @@ void match_instructions(s_Func_Prototype **p)
             print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_GETTABUP:
-            sprintf(comment, "; %s", upvalues[GET_B(code)].name);
+            sprintf(comment, "; %s %s", upvalues[GET_B(code)].name, print_constant(p, GET_C(code)));
             print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_GETTABLE:
@@ -133,7 +133,7 @@ void match_instructions(s_Func_Prototype **p)
             print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABUP:
-            sprintf(comment, "; %s", UPVALNAME(GET_A(code)));
+            sprintf(comment, "; %s %s", UPVALNAME(GET_A(code)), print_constant(p, GET_C(code)));
             print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
             break;
         case OP_SETTABLE:
@@ -365,11 +365,9 @@ void match_instructions(s_Func_Prototype **p)
 
 void dump_header(s_Filebytes *file_bytes)
 {
-    printf("\n");
-
     /* dumpLiteral(D, LUA_SIGNATURE) since it's a string literal the last byte is
      * a null terminator, which we strip */
-    printf("LUA_SIGNATURE: ");
+    printf("\nLUA_SIGNATURE: ");
     uint8_t *header_signature = poke_bytes(file_bytes, HEADER_SIGNATURE_LEN);
     for (size_t i = 0; i < HEADER_SIGNATURE_LEN; ++i)
     {
@@ -524,7 +522,7 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
         int size;
         uint8_t *lua_string, *lua_int, *lua_num;
         uint8_t tt = poke_next_byte(file_bytes); /* type tag of a TValue */
-        // ((*prototype)->k)->tt_ = tt;
+        (*prototype)->k[i].tt_ = tt;
 
         switch (tt)
         {
@@ -538,7 +536,9 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
             for (size_t i = 0; i < LUAC_NUM_LEN; ++i)
             {
                 if (i % 1 == 0 && i != 0)
+                {
                     printf(" ");
+                }
                 printf("%.2x", lua_num[i]);
             }
             // ((*prototype)->k)->value_.n = 5.0;
@@ -550,7 +550,9 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
             for (size_t i = 0; i < LUAC_INT_LEN; ++i)
             {
                 if (i % 1 == 0 && i != 0)
+                {
                     printf(" ");
+                }
                 printf("%.2x", lua_int[i]);
             }
             // ((*prototype)->k)->value_.i = 5;
@@ -565,7 +567,7 @@ void dump_constants(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
             {
                 printf("%c", lua_string[i]);
             }
-            // ((*prototype)->k)->value_.p = (void *) "Hello";
+            ((*prototype)->k)->value_.p = (void *)"Hello";
             free(lua_string);
             break;
         default:
@@ -621,6 +623,7 @@ void dump_protos(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
         (*prototype)->p[i]->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
         (*prototype)->p[i]->locvars = safe_malloc(file_bytes->length * sizeof(s_LocVar));
         (*prototype)->p[i]->source = safe_malloc(file_bytes->length * sizeof(char));
+        (*prototype)->p[i]->k = safe_malloc(file_bytes->length * sizeof(s_TValue));
     }
 
     for (int i = 0; i < (*prototype)->sizep; i++)
@@ -713,7 +716,7 @@ void allocate_prototypes(s_Filebytes *file_bytes, s_Func_Prototype **prototype)
 {
     *prototype = safe_malloc(file_bytes->length * sizeof(s_Func_Prototype));
     (*prototype)->abslineinfo = safe_malloc(file_bytes->length * sizeof(s_AbsLineInfo));
-    // (*prototype)->k = safe_malloc(file_bytes->length * sizeof(s_TValue));
+    (*prototype)->k = safe_malloc(file_bytes->length * sizeof(s_TValue));
     (*prototype)->lineinfo = safe_malloc(file_bytes->length * sizeof(uint8_t));
     (*prototype)->code = safe_malloc(file_bytes->length * sizeof(uint32_t));
     (*prototype)->upvalues = safe_malloc(file_bytes->length * sizeof(s_Upvalue_Desc));
@@ -741,7 +744,7 @@ void cleanup_prototypes(s_Func_Prototype **prototypes)
     free((*prototypes)->abslineinfo);
     free((*prototypes)->lineinfo);
     free((*prototypes)->code);
-    // free((*prototypes)->k);
+    free((*prototypes)->k);
 
     for (int i = 0; i < (*prototypes)->sizep; i++)
     {
@@ -763,7 +766,7 @@ void cleanup_prototypes(s_Func_Prototype **prototypes)
         free(proto->abslineinfo);
         free(proto->lineinfo);
         free(proto->code);
-        // free(proto->k);
+        free(proto->k);
 
         free((*prototypes)->p);
         free(proto);

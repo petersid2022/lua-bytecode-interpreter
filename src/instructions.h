@@ -250,8 +250,8 @@ typedef struct s_Func_Prototype
     struct s_Func_Prototype **p; /* functions defined inside the function */
     s_AbsLineInfo *abslineinfo;  /* idem */
     s_Upvalue_Desc *upvalues;    /* variables captured from an enclosing scope */
-    // s_TValue *k;                 /* constants used by the function */
-    uint32_t *code; /* all instructions are unsigned 32-bit integers. */
+    s_TValue *k;                 /* constants used by the function */
+    uint32_t *code;              /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
 /* Match instruction opcodes and print the bytecode listing */
