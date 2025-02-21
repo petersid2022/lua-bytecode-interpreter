@@ -11,7 +11,9 @@
 
 static inline void print_constant(s_Func_Prototype **p, int i)
 {
-    const s_TValue *o = &(*p)->k[i];
+    (void)p;
+    (void)i;
+    const s_TValue *o = NULL;
     switch (ttypetag(o))
     {
     case LUA_VNUMFLT:
@@ -118,9 +120,8 @@ void match_instructions(s_Func_Prototype **p)
             print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
             break;
         case OP_GETTABUP:
-            sprintf(comment, "; %s ", upvalues[GET_B(code)].name);
+            sprintf(comment, "; %s", upvalues[GET_B(code)].name);
             print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
-            print_constant(p, GET_C(code));
             break;
         case OP_GETTABLE:
             print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
