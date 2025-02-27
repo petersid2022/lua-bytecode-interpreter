@@ -206,12 +206,12 @@ typedef struct s_LocVar
 } s_LocVar;
 
 /* Union of all Lua values */
-typedef union s_Value {
+typedef union u_Value {
     void *p;    // light userdata
     int i;      // integer numbers
     float n;    // float numbers
     uint8_t ub; // not used, but may avoid warnings for uninitialized value
-} s_Value;
+} u_Value;
 
 /*
  * Tagged Values.
@@ -220,7 +220,7 @@ typedef union s_Value {
  * */
 typedef struct s_TValue
 {
-    s_Value value_;
+    u_Value value_;
     uint8_t tt_;
 } s_TValue;
 
