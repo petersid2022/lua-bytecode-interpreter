@@ -64,6 +64,7 @@
 #define rawtt(o) ((o)->tt_)
 #define withvariant(t) ((t) & 0x3F)
 #define ttypetag(o) withvariant(rawtt(o))
+#define getstr(ts) ((ts)->contents)
 
 static const char *const opnames[] = {
     "MOVE",       "LOADI",    "LOADF",    "LOADK",    "LOADKX",   "LOADFALSE", "LFALSESKIP", "LOADTRUE", "LOADNIL",
