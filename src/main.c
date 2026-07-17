@@ -1,45 +1,30 @@
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#include "file.h"
 #include "instructions.h"
 #include "utils.h"
 
-int main(int argc, char **argv)
-{
-    struct stat buf;
-    if (argc != 2)
-    {
-        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
-        return -1;
-    }
+s_Arena arena;
 
-    stat(argv[1], &buf);
+int main(int argc, char **argv) {
+  arena_initialize();
 
-    if (S_ISDIR(buf.st_mode))
-    {
-        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
-        return -1;
-    }
+  s_String_Builder sb = {0};
 
-    s_Filebytes *file_bytes = NULL;
-    s_Func_Prototype **prototypes = NULL;
+  if (!parse_command_line_args(argc, argv)) {
+    return 1;
+  }
 
-    file_bytes = read_file_bytes(argv[1]);
+  if (!read_lua_file_to_memory(argv[1], &sb)) {
+    return 1;
+  }
 
-    if (file_bytes->bytes[1] != '\x4c')
-    {
-        fprintf(stderr, "ERROR: You need to specify a valid luac file.\n");
-        free(file_bytes);
-        return -1;
-    }
+  s_String_View sv = sv_from_sb(&sb);
 
-    print_hexdump(file_bytes);
-    parse_hexdump(file_bytes, prototypes);
+  print_luac_hex_dump(&sv);
+  print_luac_header(&sv);
+  parse_luac_hex_dump(&sv);
 
-    free(file_bytes);
+  arena_shutdown();
 
-    return 0;
+  return 0;
 }

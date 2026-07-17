@@ -3,11 +3,15 @@
 set -xe
 
 CC="clang"
-CFLAGS="-std=c99 -pedantic -Wall -Wextra -O0 -ggdb3 -fsanitize=address,undefined"
+CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -O0 -ggdb3 -fsanitize=address,undefined"
 IFLAGS="-Isrc"
-SRC="./src/file.c ./src/instructions.c ./src/utils.c ./src/main.c"
+SRC="./src/instructions.c ./src/utils.c ./src/main.c"
 OUTPUT="./lbi"
 
 $CC $IFLAGS $CFLAGS -o $OUTPUT $SRC
 
-$OUTPUT fibonacci/luac.out
+if [ "$1" = "debug" ]; then
+    gdb -tui --args "$OUTPUT" fibonacci/luac.out
+else
+    $OUTPUT fibonacci/luac.out
+fi
