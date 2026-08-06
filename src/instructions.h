@@ -5,9 +5,6 @@
 
 #include "utils.h"
 
-#define MEMORY_MAX (1 << 16)
-static uint16_t memory[MEMORY_MAX];  /* 65536 locations */
-
 #define SS(x) ((x == 1) ? "" : "s")
 #define S(x) (int)(x), SS(x)
 
@@ -63,24 +60,13 @@ static uint16_t memory[MEMORY_MAX];  /* 65536 locations */
 #define ttypetag(o) withvariant(rawtt(o))
 #define getstr(ts) ((ts)->contents)
 
-static const char *const opnames[] = {
-    "MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE", "LFALSESKIP", "LOADTRUE", "LOADNIL",
-    "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI", "GETFIELD", "SETTABUP", "SETTABLE", "SETI",
-    "SETFIELD", "NEWTABLE", "SELF", "ADDI", "ADDK", "SUBK", "MULK", "MODK", "POWK",
-    "DIVK", "IDIVK", "BANDK", "BORK", "BXORK", "SHRI", "SHLI", "ADD", "SUB",
-    "MUL", "MOD", "POW", "DIV", "IDIV", "BAND", "BOR", "BXOR", "SHL",
-    "SHR", "MMBIN", "MMBINI", "MMBINK", "UNM", "BNOT", "NOT", "LEN", "CONCAT",
-    "CLOSE", "TBC", "JMP", "EQ", "LT", "LE", "EQK", "EQI", "LTI",
-    "LEI", "GTI", "GEI", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "RETURN0",
-    "RETURN1", "FORLOOP", "FORPREP", "TFORPREP", "TFORCALL", "TFORLOOP", "SETLIST", "CLOSURE", "VARARG",
-    "VARARGPREP", "EXTRAARG", NULL};
-
 /* From: https://www.lua.org/doc/jucs05.pdf "Section 7 The Virtual Machine"
  * R(X) means the Xth register.
  * K(X) means the Xth constant.
  * RK(X) means either R(X) or K(X-k), depending on the value of X — it is R(X)
- * for values of X smaller than k (a build parameter, typically 250). G[X] means
- * the field X in the table of globals. U[X] means the Xth upvalue.
+ * for values of X smaller than k (a build parameter, typically 250).
+ * G[X] means the field X in the table of globals.
+ * U[X] means the Xth upvalue.
  * */
 
 /*
@@ -246,18 +232,10 @@ typedef struct s_Func_Prototype {
   uint32_t *code;              /* all instructions are unsigned 32-bit integers. */
 } s_Func_Prototype;
 
-/* Parse the bytecode that luac dumps as a compiled chunk from the binary file:
- * https://www.lua.org/source/5.4/ldump.c.html#luaU_dump */
+/* https://www.lua.org/source/5.4/ldump.c.html#luaU_dump */
 extern void parse_luac_bytecode(s_String_View *, s_Func_Prototype *, bool);
-
-/* Entry point for the parser */
-extern void parse_luac_hex_dump(s_String_View *);
-
-/* Entry point for the parser */
-extern void print_luac_header(s_String_View *);
-
-/* Entry point for the virtual machine */
-extern void run(s_String_View *);
+extern void print_luac_metadata(s_String_View *);
+extern void run(s_String_Builder *);
 
 #endif // INSTRUCTIONS_H__
 

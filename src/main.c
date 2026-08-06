@@ -18,13 +18,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  s_String_View sv = sv_from_sb(&sb);
-
-  print_luac_dump(&sv);
-  print_luac_header(&sv);
-  parse_luac_hex_dump(&sv);
-
-  run(&sv);
+  run(&sb);
 
   arena_shutdown();
 

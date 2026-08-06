@@ -1,9 +1,11 @@
 #ifndef UTILS_H__
 #define UTILS_H__
 
+#include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 extern struct s_Arena arena;
 
@@ -34,18 +36,25 @@ typedef struct s_Arena {
   s_Region *end;
 } s_Arena;
 
-#define reserve_memory(da, expected_capacity)                                    \
-  do {                                                                           \
-    if ((expected_capacity) > (da)->capacity) {                                  \
-      if ((da)->capacity == 0) {                                                 \
-        (da)->capacity = 256;                                                    \
-      }                                                                          \
-      while ((expected_capacity) > (da)->capacity) {                             \
-        (da)->capacity *= 1.5;                                                   \
-      }                                                                          \
-      (da)->data = arena_malloc(&(arena), (da)->capacity * sizeof(*(da)->data)); \
-      assert((da)->data != NULL);                                                \
-    }                                                                            \
+#define reserve_memory(da, expected_capacity)                                        \
+  do {                                                                               \
+    size_t required_capacity_ = (expected_capacity);                                 \
+    if (required_capacity_ > (da)->capacity) {                                       \
+      size_t new_capacity_ = (da)->capacity ? (da)->capacity : 256;                  \
+      while (required_capacity_ > new_capacity_) {                                   \
+        size_t grown_capacity_ = new_capacity_ + new_capacity_ / 2;                  \
+        assert(grown_capacity_ > new_capacity_);                                     \
+        new_capacity_ = grown_capacity_;                                             \
+      }                                                                              \
+      assert(new_capacity_ <= SIZE_MAX / sizeof(*(da)->data));                       \
+      void *new_data_ = arena_malloc(&(arena), new_capacity_ * sizeof(*(da)->data)); \
+      assert(new_data_ != NULL);                                                     \
+      if ((da)->count > 0) {                                                         \
+        memcpy(new_data_, (da)->data, (da)->count * sizeof(*(da)->data));            \
+      }                                                                              \
+      (da)->data = new_data_;                                                        \
+      (da)->capacity = new_capacity_;                                                \
+    }                                                                                \
   } while (0)
 
 #define append(xs, x)                           \
@@ -94,7 +103,6 @@ extern void *arena_malloc(s_Arena *, size_t);
 extern void *arena_calloc_array(s_Arena *, size_t, size_t);
 
 extern void print_binary(const uint32_t);
-extern void print_luac_dump(const s_String_View *);
 
 extern void skip_byte(s_String_View *);
 extern uint8_t poke_next_byte(s_String_View *);

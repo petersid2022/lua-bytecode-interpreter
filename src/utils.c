@@ -285,25 +285,6 @@ inline void print_binary(const uint32_t value) {
   printf("\n");
 }
 
-inline void print_luac_dump(const s_String_View *contents) {
-  for (size_t i = 0; i <= contents->count; i += 16) {
-    printf("%.8zx:  ", i);
-    for (size_t j = 0; j < 16; ++j) {
-      if (i + j < contents->count) {
-        printf("%.2hhx ", contents->data[i + j]);
-      } else {
-        printf(" ");
-      }
-
-      if ((j + 1) % 8 == 0) {
-        printf(" ");
-      }
-    }
-
-    printf("\n");
-  }
-}
-
 inline void skip_byte(s_String_View *sv) {
   sv->data++;
   sv->count--;

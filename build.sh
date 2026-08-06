@@ -7,11 +7,13 @@ CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -O0 -ggdb3 -fsanitize=address,u
 IFLAGS="-Isrc"
 SRC="./src/instructions.c ./src/utils.c ./src/main.c"
 OUTPUT="./lbi"
+# INPUT="./fibonacci/luac.out"
+INPUT="./luac.out"
 
 $CC $IFLAGS $CFLAGS -o $OUTPUT $SRC
 
 if [ "$1" = "debug" ]; then
-    gdb -tui --args "$OUTPUT" fibonacci/luac.out
+    gdb -tui --args "$OUTPUT" "$INPUT"
 else
-    $OUTPUT fibonacci/luac.out
+    $OUTPUT $INPUT
 fi

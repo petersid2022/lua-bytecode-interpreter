@@ -3,10 +3,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "instructions.h"
 #include "utils.h"
+
+#define MEMORY_MAX (1 << 16)
+static uint32_t memory[MEMORY_MAX];
+
+static const char *const opnames[] = {
+    "MOVE", "LOADI", "LOADF", "LOADK", "LOADKX", "LOADFALSE", "LFALSESKIP", "LOADTRUE", "LOADNIL",
+    "GETUPVAL", "SETUPVAL", "GETTABUP", "GETTABLE", "GETI", "GETFIELD", "SETTABUP", "SETTABLE", "SETI",
+    "SETFIELD", "NEWTABLE", "SELF", "ADDI", "ADDK", "SUBK", "MULK", "MODK", "POWK",
+    "DIVK", "IDIVK", "BANDK", "BORK", "BXORK", "SHRI", "SHLI", "ADD", "SUB",
+    "MUL", "MOD", "POW", "DIV", "IDIV", "BAND", "BOR", "BXOR", "SHL",
+    "SHR", "MMBIN", "MMBINI", "MMBINK", "UNM", "BNOT", "NOT", "LEN", "CONCAT",
+    "CLOSE", "TBC", "JMP", "EQ", "LT", "LE", "EQK", "EQI", "LTI",
+    "LEI", "GTI", "GEI", "TEST", "TESTSET", "CALL", "TAILCALL", "RETURN", "RETURN0",
+    "RETURN1", "FORLOOP", "FORPREP", "TFORPREP", "TFORCALL", "TFORLOOP", "SETLIST", "CLOSURE", "VARARG",
+    "VARARGPREP", "EXTRAARG", NULL};
 
 static inline s_Func_Prototype *new_luac_prototype(void) {
   return arena_calloc_array(&arena, 1, sizeof(s_Func_Prototype));
@@ -47,291 +63,291 @@ static inline void print_instruction(const char *opname, int count, const char *
 }
 
 static inline void dump_luac_instructions(s_Func_Prototype *p) {
-    char *comment = arena_malloc(&arena, 1024);
+  char *comment = arena_malloc(&arena, 1024);
 
-    sprintf(comment, "<%s:%d,%d>"
-                     "(%d instructions at %p)",
-            (p)->source, (p)->linedefined, (p)->lastlinedefined, (p)->sizecode, (void *)(p));
+  sprintf(comment, "<%s:%d,%d>"
+                   "(%d instructions at %p)",
+          (p)->source, (p)->linedefined, (p)->lastlinedefined, (p)->sizecode, (void *)(p));
 
-    printf("\n%s %s\n", ((p)->linedefined == 0) ? "main" : "function", comment);
+  printf("\n%s %s\n", ((p)->linedefined == 0) ? "main" : "function", comment);
 
-    printf("%d%s param%s, "
-           "%d slot%s, %d upvalue%s, ",
-           (int)((p)->numparams),
-           (p)->is_vararg ? "+" : "", SS((p)->numparams), S((p)->maxstacksize), S((p)->sizeupvalues));
+  printf("%d%s param%s, "
+         "%d slot%s, %d upvalue%s, ",
+         (int)((p)->numparams),
+         (p)->is_vararg ? "+" : "", SS((p)->numparams), S((p)->maxstacksize), S((p)->sizeupvalues));
 
-    printf("%d local%s, %d constant%s, %d function%s\n", S((p)->sizelocvars), S((p)->sizek), S((p)->sizep));
+  printf("%d local%s, %d constant%s, %d function%s\n", S((p)->sizelocvars), S((p)->sizek), S((p)->sizep));
 
-    for (int i = 0; i < p->sizecode; i++) {
-      s_Upvalue_Desc *upvalues = p->upvalues;
+  for (int i = 0; i < p->sizecode; i++) {
+    s_Upvalue_Desc *upvalues = p->upvalues;
 
-      uint32_t code = p->code[i];
-      uint8_t opcode = code & 0x7F;
+    uint32_t code = p->code[i];
+    uint8_t opcode = code & 0x7F;
 
-      printf("\t%d\t", i);
+    printf("\t%d\t", i);
 
-      switch (opcode) {
-      case OP_MOVE:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_LOADI:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
-        break;
-      case OP_LOADF:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
-        break;
-      case OP_LOADK:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
-        break;
-      case OP_LOADKX:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_LOADFALSE:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_LFALSESKIP:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_LOADTRUE:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_LOADNIL:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_GETUPVAL:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_SETUPVAL:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_GETTABUP:
-        sprintf(comment, "; %s %s", upvalues[GET_B(code)].name, print_constant(p, GET_C(code)));
-        print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_GETTABLE:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_GETI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_GETFIELD:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SETTABUP:
-        sprintf(comment, "; %s %s", UPVALNAME(GET_A(code)), print_constant(p, GET_C(code)));
-        print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SETTABLE:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SETI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SETFIELD:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_NEWTABLE:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SELF:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_ADDI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
-        break;
-      case OP_ADDK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SUBK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MULK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MODK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_POWK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_DIVK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_IDIVK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BANDK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BORK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BXORK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SHRI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
-        break;
-      case OP_SHLI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
-        break;
-      case OP_ADD:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SUB:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MUL:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MOD:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_POW:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_DIV:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_IDIV:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BAND:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BOR:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_BXOR:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SHL:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_SHR:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MMBIN:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_MMBINI:
-        sprintf(comment, "; %d", GET_k(code));
-        print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_sB(code), GET_C(code));
-        break;
-      case OP_MMBINK:
-        sprintf(comment, "; %d", GET_k(code));
-        print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_UNM:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_BNOT:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_NOT:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_LEN:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_CONCAT:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
-        break;
-      case OP_CLOSE:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_TBC:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_JMP:
-        sprintf(comment, "; to %d", GET_sJ(code) + i + 2);
-        print_instruction(opnames[opcode], 1, comment, GET_sJ(code));
-        break;
-      case OP_EQ:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
-        break;
-      case OP_LT:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
-        break;
-      case OP_LE:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
-        break;
-      case OP_EQK:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
-        break;
-      case OP_EQI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
-        break;
-      case OP_LTI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
-        break;
-      case OP_LEI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
-        break;
-      case OP_GTI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
-        break;
-      case OP_GEI:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
-        break;
-      case OP_TEST:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_k(code));
-        break;
-      case OP_TESTSET:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
-        break;
-      case OP_CALL:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_TAILCALL:
-        sprintf(comment, "; %d", GET_k(code));
-        print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_RETURN:
-        print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
-        break;
-      case OP_RETURN0:
-        print_instruction(opnames[opcode], 0, NULL);
-        break;
-      case OP_RETURN1:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_FORLOOP:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
-        break;
-      case OP_FORPREP:
-        sprintf(comment, "; exit to %d", i + GET_Bx(code) + 3);
-        print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
-        break;
-      case OP_TFORPREP:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
-        break;
-      case OP_TFORCALL:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
-        break;
-      case OP_TFORLOOP:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
-        break;
-      case OP_SETLIST:
-        print_instruction(opnames[opcode], 4, NULL, GET_A(code), GET_B(code), GET_C(code), GET_k(code));
-        break;
-      case OP_CLOSURE:
-        sprintf(comment, "; %p", (const void *)(p)->p[GET_Bx(code)]);
-        print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
-        break;
-      case OP_VARARG:
-        print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
-        break;
-      case OP_VARARGPREP:
-        print_instruction(opnames[opcode], 1, NULL, GET_A(code));
-        break;
-      case OP_EXTRAARG:
-        print_instruction(opnames[opcode], 1, NULL, GET_Ax(code));
-        break;
-      default:
-        printf("Failed to match opcode: %s\n", opnames[opcode]);
-        break;
-      };
+    switch (opcode) {
+    case OP_MOVE:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_LOADI:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
+      break;
+    case OP_LOADF:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_sBx(code));
+      break;
+    case OP_LOADK:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
+      break;
+    case OP_LOADKX:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_LOADFALSE:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_LFALSESKIP:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_LOADTRUE:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_LOADNIL:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_GETUPVAL:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_SETUPVAL:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_GETTABUP:
+      sprintf(comment, "; %s %s", upvalues[GET_B(code)].name, print_constant(p, GET_C(code)));
+      print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_GETTABLE:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_GETI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_GETFIELD:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SETTABUP:
+      sprintf(comment, "; %s %s", UPVALNAME(GET_A(code)), print_constant(p, GET_C(code)));
+      print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SETTABLE:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SETI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SETFIELD:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_NEWTABLE:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SELF:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_ADDI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
+      break;
+    case OP_ADDK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SUBK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MULK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MODK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_POWK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_DIVK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_IDIVK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BANDK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BORK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BXORK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SHRI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
+      break;
+    case OP_SHLI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_sC(code));
+      break;
+    case OP_ADD:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SUB:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MUL:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MOD:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_POW:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_DIV:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_IDIV:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BAND:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BOR:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_BXOR:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SHL:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_SHR:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MMBIN:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_MMBINI:
+      sprintf(comment, "; %d", GET_k(code));
+      print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_sB(code), GET_C(code));
+      break;
+    case OP_MMBINK:
+      sprintf(comment, "; %d", GET_k(code));
+      print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_UNM:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_BNOT:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_NOT:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_LEN:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_CONCAT:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
+      break;
+    case OP_CLOSE:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_TBC:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_JMP:
+      sprintf(comment, "; to %d", GET_sJ(code) + i + 2);
+      print_instruction(opnames[opcode], 1, comment, GET_sJ(code));
+      break;
+    case OP_EQ:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
+      break;
+    case OP_LT:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
+      break;
+    case OP_LE:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
+      break;
+    case OP_EQK:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
+      break;
+    case OP_EQI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
+      break;
+    case OP_LTI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
+      break;
+    case OP_LEI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
+      break;
+    case OP_GTI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
+      break;
+    case OP_GEI:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_sB(code), GET_k(code));
+      break;
+    case OP_TEST:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_k(code));
+      break;
+    case OP_TESTSET:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_k(code));
+      break;
+    case OP_CALL:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_TAILCALL:
+      sprintf(comment, "; %d", GET_k(code));
+      print_instruction(opnames[opcode], 3, (const char *)comment, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_RETURN:
+      print_instruction(opnames[opcode], 3, NULL, GET_A(code), GET_B(code), GET_C(code));
+      break;
+    case OP_RETURN0:
+      print_instruction(opnames[opcode], 0, NULL);
+      break;
+    case OP_RETURN1:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_FORLOOP:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
+      break;
+    case OP_FORPREP:
+      sprintf(comment, "; exit to %d", i + GET_Bx(code) + 3);
+      print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
+      break;
+    case OP_TFORPREP:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
+      break;
+    case OP_TFORCALL:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
+      break;
+    case OP_TFORLOOP:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_Bx(code));
+      break;
+    case OP_SETLIST:
+      print_instruction(opnames[opcode], 4, NULL, GET_A(code), GET_B(code), GET_C(code), GET_k(code));
+      break;
+    case OP_CLOSURE:
+      sprintf(comment, "; %p", (const void *)(p)->p[GET_Bx(code)]);
+      print_instruction(opnames[opcode], 2, comment, GET_A(code), GET_Bx(code));
+      break;
+    case OP_VARARG:
+      print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_C(code));
+      break;
+    case OP_VARARGPREP:
+      print_instruction(opnames[opcode], 1, NULL, GET_A(code));
+      break;
+    case OP_EXTRAARG:
+      print_instruction(opnames[opcode], 1, NULL, GET_Ax(code));
+      break;
+    default:
+      printf("Failed to match opcode: %s\n", opnames[opcode]);
+      break;
+    };
   }
 }
 
@@ -425,7 +441,7 @@ static inline void dump_luac_constants(s_String_View *contents, s_Func_Prototype
         }
         printf("%.2x", sv.data[i]);
       }
-      prototype->tagval[i].value_.n = 5.0;
+      // prototype->tagval[i].value_.n = 5.0;
       break;
     case LUA_VNUMINT: /* LUA_VNUMINT = integer numbers */
       printf("LUA_VNUMINT: ");
@@ -436,7 +452,7 @@ static inline void dump_luac_constants(s_String_View *contents, s_Func_Prototype
         }
         printf("%.2x", sv.data[i]);
       }
-      prototype->tagval[i].value_.n = 5.0;
+      // prototype->tagval[i].value_.n = 5.0;
       break;
     case LUA_VSHRSTR: /* LUA_VSHRSTR = short strings */
     case LUA_VLNGSTR: /* LUA_VLNGSTR = long strings */
@@ -446,7 +462,7 @@ static inline void dump_luac_constants(s_String_View *contents, s_Func_Prototype
       for (size_t i = 0; i < sv.count; ++i) {
         printf("%c", sv.data[i]);
       }
-      prototype->tagval[i].value_.p = (void *)"Hello";
+      prototype->tagval[i].value_.p = (void *)sv_to_cstr(sv);
       break;
     default:
       /* lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE) */
@@ -564,13 +580,25 @@ void parse_luac_bytecode(s_String_View *contents, s_Func_Prototype *prototype, b
   dump_luac_instructions(prototype);
 }
 
-void parse_luac_hex_dump(s_String_View *sv) {
-  s_Func_Prototype *prototype = new_luac_prototype();
-  parse_luac_bytecode(sv, prototype, false);
-}
-
-void print_luac_header(s_String_View *contents) {
+void print_luac_metadata(s_String_View *contents) {
   s_String_View sv;
+
+  for (size_t i = 0; i <= contents->count; i += 16) {
+    printf("%.8zx:  ", i);
+    for (size_t j = 0; j < 16; ++j) {
+      if (i + j < contents->count) {
+        printf("%.2hhx ", contents->data[i + j]);
+      } else {
+        printf(" ");
+      }
+
+      if ((j + 1) % 8 == 0) {
+        printf(" ");
+      }
+    }
+
+    printf("\n");
+  }
 
   /* dumpLiteral(D, LUA_SIGNATURE) since it's a string literal the last byte is
    * a null terminator, which we strip */
@@ -637,6 +665,53 @@ void print_luac_header(s_String_View *contents) {
   printf("\nsizeof(upvalues): 0x%.2x\n", poke_next_byte(contents));
 }
 
-void run(s_String_View *contents) {
-    (void)contents;
+void run(s_String_Builder *contents) {
+  s_String_View sv = sv_from_sb(contents);
+  s_Func_Prototype *proto = new_luac_prototype();
+
+  print_luac_metadata(&sv);
+  parse_luac_bytecode(&sv, proto, false);
+
+  for (int i = 0; i < proto->sizecode; i++) {
+    // s_Upvalue_Desc *upvalues = proto->upvalues;
+    s_TValue *tagval = proto->tagval;
+
+    uint32_t code = proto->code[i];
+    uint8_t opcode = code & 0x7F;
+
+    switch (opcode) {
+    case OP_VARARGPREP:
+      break;
+    case OP_GETTABUP:
+      // memory[GET_A(code)] = (uint32_t)atoi((const char *)tagval[GET_C(code)].value_.p);
+      break;
+    case OP_LOADK: {
+      uint32_t index = GET_Bx(code);
+      if (index >= (uint32_t)proto->sizek) {
+        break;
+      }
+      const char *p = tagval[index].value_.p;
+      if (p == NULL) {
+        break;
+      }
+      size_t bytes = strlen(p) + 1;
+      size_t slots = (bytes + sizeof(memory[0]) - 1) / sizeof(memory[0]);
+      size_t start = GET_A(code);
+      if (slots > MEMORY_MAX - start) {
+        break;
+      }
+      memset(&memory[start], 0, slots * sizeof(memory[0]));
+      memcpy(&memory[start], p, bytes);
+      break;
+    }
+    case OP_CALL:
+      printf("%s\n", (char *)(memory + GET_A(code) + 1));
+      break;
+    case OP_RETURN:
+      break;
+    default:
+      printf("Failed to match opcode: %s\n", opnames[opcode]);
+      break;
+    };
+  }
 }
