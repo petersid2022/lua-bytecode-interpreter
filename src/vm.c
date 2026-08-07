@@ -31,15 +31,15 @@ static inline s_Func_Prototype *new_luac_prototype(void) {
 static inline const char *print_constant(s_Func_Prototype *p, int i) {
   (void)p;
   (void)i;
-  const s_TValue *o = (s_TValue *)&(p->tagval[i]);
+  const s_TValue *o = (s_TValue *)&(p->constants[i]);
   switch (ttypetag(o)) {
   case LUA_VNUMFLT:
   case LUA_VNUMINT:
-    return p->tagval[i].value_.p;
+    return p->constants[i].value_.p;
     break;
   case LUA_VSHRSTR:
   case LUA_VLNGSTR:
-    return (char *)p->tagval[i].value_.p;
+    return (char *)p->constants[i].value_.p;
     break;
   default:
     return NULL;
@@ -418,14 +418,14 @@ static inline void dump_luac_constants(s_String_View *contents, s_Func_Prototype
   int sizek = poke_next_byte(contents) & ~0x80;
 
   prototype->sizek = sizek;
-  prototype->tagval = arena_calloc_array(&arena, (size_t)prototype->sizek, sizeof(*prototype->tagval));
+  prototype->constants = arena_calloc_array(&arena, (size_t)prototype->sizek, sizeof(*prototype->constants));
 
   for (int i = 0; i < sizek; ++i) {
     int size;
     s_String_View sv;
 
     uint8_t tt = poke_next_byte(contents); /* type tag of a TValue */
-    prototype->tagval[i].tt_ = tt;
+    prototype->constants[i].tt_ = tt;
 
     switch (tt) {
     /*
@@ -462,7 +462,7 @@ static inline void dump_luac_constants(s_String_View *contents, s_Func_Prototype
       for (size_t i = 0; i < sv.count; ++i) {
         printf("%c", sv.data[i]);
       }
-      prototype->tagval[i].value_.p = (void *)sv_to_cstr(sv);
+      prototype->constants[i].value_.p = (void *)sv_to_cstr(sv);
       break;
     default:
       /* lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE) */
@@ -540,19 +540,19 @@ static inline void dump_luac_debuginfo(s_String_View *contents, s_Func_Prototype
 
   // dumpInt(D, f->sizelocvars)
   prototype->sizelocvars = poke_next_byte(contents) & ~0x80;
-  prototype->locvars = arena_calloc_array(&arena, (size_t)prototype->sizelocvars, sizeof(*prototype->locvars));
+  prototype->variables = arena_calloc_array(&arena, (size_t)prototype->sizelocvars, sizeof(*prototype->variables));
 
   for (int i = 0; i < prototype->sizelocvars; ++i) {
     int size = poke_next_byte(contents) & ~0x80;
 
     if (size > 0) {
       sv = poke_next_bytes(contents, (size_t)(size - 1));
-      prototype->locvars[i].varname = arena_calloc_array(&arena, (size_t)size, sizeof(*prototype->locvars[i].varname));
-      memcpy(prototype->locvars[i].varname, sv.data, sv.count);
+      prototype->variables[i].varname = arena_calloc_array(&arena, (size_t)size, sizeof(*prototype->variables[i].varname));
+      memcpy(prototype->variables[i].varname, sv.data, sv.count);
     }
 
-    prototype->locvars[i].startpc = poke_next_byte(contents) & ~0x80;
-    prototype->locvars[i].endpc = poke_next_byte(contents) & ~0x80;
+    prototype->variables[i].startpc = poke_next_byte(contents) & ~0x80;
+    prototype->variables[i].endpc = poke_next_byte(contents) & ~0x80;
   }
 
   // dumpInt(D, f->sizeupvalues)
@@ -713,11 +713,9 @@ void run(s_String_Builder *contents) {
       break;
     }
     case OP_CLOSURE: {
-      // memory[GET_A(code)] = memory[GET_B(code)] + memory[GET_C(code)];
       break;
     }
     case OP_MMBIN: {
-      // memory[GET_A(code)] = memory[GET_B(code)] + memory[GET_C(code)];
       break;
     }
     case OP_LOADI: {
@@ -750,7 +748,7 @@ void run(s_String_Builder *contents) {
         break;
       }
 
-      const char *p = proto->tagval[index].value_.p;
+      const char *p = proto->constants[index].value_.p;
       if (!p) {
         break;
       }
