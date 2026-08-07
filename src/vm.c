@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "instructions.h"
-#include "utils.h"
+#include "util.h"
+#include "vm.h"
 
 #define MEMORY_MAX (1 << 16)
 static uint32_t memory[MEMORY_MAX];
@@ -35,11 +35,11 @@ static inline const char *print_constant(s_Func_Prototype *p, int i) {
   switch (ttypetag(o)) {
   case LUA_VNUMFLT:
   case LUA_VNUMINT:
-    return "LUA_VNUMINT or LUA_VNUMFLT";
+    return p->tagval[i].value_.p;
     break;
   case LUA_VSHRSTR:
   case LUA_VLNGSTR:
-    return "LUA_VLNGSTR or LUA_VSHRSTR";
+    return (char *)p->tagval[i].value_.p;
     break;
   default:
     return NULL;
@@ -121,7 +121,7 @@ static inline void dump_luac_instructions(s_Func_Prototype *p) {
       print_instruction(opnames[opcode], 2, NULL, GET_A(code), GET_B(code));
       break;
     case OP_GETTABUP:
-      sprintf(comment, "; %s %s", upvalues[GET_B(code)].name, print_constant(p, GET_C(code)));
+      sprintf(comment, "; %s \"%s\"", upvalues[GET_B(code)].name, print_constant(p, GET_C(code)));
       print_instruction(opnames[opcode], 3, comment, GET_A(code), GET_B(code), GET_C(code));
       break;
     case OP_GETTABLE:
@@ -351,7 +351,7 @@ static inline void dump_luac_instructions(s_Func_Prototype *p) {
   }
 }
 
-static inline void dump_luac_function(s_String_View *contents, s_Func_Prototype *prototype, bool is_nested) {
+static inline void dump_luac_functions(s_String_View *contents, s_Func_Prototype *prototype, bool is_nested) {
   s_String_View sv;
 
   prototype->nested = is_nested;
@@ -501,7 +501,7 @@ static inline void dump_luac_upvalues(s_String_View *contents, s_Func_Prototype 
   printf("\n");
 }
 
-static inline void dump_luac_protos(s_String_View *contents, s_Func_Prototype *prototype) {
+static inline void dump_luac_prototypes(s_String_View *contents, s_Func_Prototype *prototype) {
   // dumpInt(D, f->sizep)
   prototype->sizep = poke_next_byte(contents) & ~0x80;
   prototype->p = arena_calloc_array(&arena, (size_t)prototype->sizep, sizeof(s_Func_Prototype *));
@@ -515,7 +515,7 @@ static inline void dump_luac_protos(s_String_View *contents, s_Func_Prototype *p
   }
 }
 
-static inline void dump_luac_debug(s_String_View *contents, s_Func_Prototype *prototype) {
+static inline void dump_luac_debuginfo(s_String_View *contents, s_Func_Prototype *prototype) {
   s_String_View sv;
 
   // Since stripping debug info is by default set to 0 (can be enabled via `-s`)
@@ -572,11 +572,11 @@ static inline void dump_luac_debug(s_String_View *contents, s_Func_Prototype *pr
 
 void parse_luac_bytecode(s_String_View *contents, s_Func_Prototype *prototype, bool is_nested) {
   printf("\n----[%d]----\n\n", prototype->scopecount);
-  dump_luac_function(contents, prototype, is_nested);
+  dump_luac_functions(contents, prototype, is_nested);
   dump_luac_constants(contents, prototype);
   dump_luac_upvalues(contents, prototype);
-  dump_luac_protos(contents, prototype);
-  dump_luac_debug(contents, prototype);
+  dump_luac_prototypes(contents, prototype);
+  dump_luac_debuginfo(contents, prototype);
   dump_luac_instructions(prototype);
 }
 
@@ -672,26 +672,58 @@ void run(s_String_Builder *contents) {
   print_luac_metadata(&sv);
   parse_luac_bytecode(&sv, proto, false);
 
-  for (int i = 0; i < proto->sizecode; i++) {
+  for (int pc = 0; pc < proto->sizecode; pc++) {
     // s_Upvalue_Desc *upvalues = proto->upvalues;
     s_TValue *tagval = proto->tagval;
 
-    uint32_t code = proto->code[i];
+    uint32_t code = proto->code[pc];
     uint8_t opcode = code & 0x7F;
 
     switch (opcode) {
     case OP_VARARGPREP:
       break;
     case OP_GETTABUP:
-      // memory[GET_A(code)] = (uint32_t)atoi((const char *)tagval[GET_C(code)].value_.p);
+      // R[A] := UpValue[B][K[C]:shortstring]
       break;
+    case OP_MOVE: {
+      memory[GET_A(code)] = memory[GET_B(code)];
+      break;
+    }
+    case OP_MMBIN: {
+      // memory[GET_A(code)] = memory[GET_B(code)] + memory[GET_C(code)];
+      break;
+    }
+    case OP_LOADI: {
+      memory[GET_A(code)] = GET_sBx(code);
+      break;
+    }
+    case OP_ADD: {
+      memory[GET_A(code)] = memory[GET_B(code)] + memory[GET_C(code)];
+      break;
+    }
+    case OP_MUL: {
+      memory[GET_A(code)] = memory[GET_B(code)] * memory[GET_C(code)];
+      break;
+    }
+    case OP_SUB: {
+      memory[GET_A(code)] = memory[GET_B(code)] - memory[GET_C(code)];
+      break;
+    }
+    case OP_DIV: {
+      memory[GET_A(code)] = memory[GET_B(code)] / memory[GET_C(code)];
+      break;
+    }
+    case OP_MOD: {
+      memory[GET_A(code)] = memory[GET_B(code)] % memory[GET_C(code)];
+      break;
+    }
     case OP_LOADK: {
       uint32_t index = GET_Bx(code);
       if (index >= (uint32_t)proto->sizek) {
         break;
       }
       const char *p = tagval[index].value_.p;
-      if (p == NULL) {
+      if (!p) {
         break;
       }
       size_t bytes = strlen(p) + 1;
@@ -705,7 +737,7 @@ void run(s_String_Builder *contents) {
       break;
     }
     case OP_CALL:
-      printf("%s\n", (char *)(memory + GET_A(code) + 1));
+      printf("%d\n", *(memory + GET_A(code) + 1));
       break;
     case OP_RETURN:
       break;

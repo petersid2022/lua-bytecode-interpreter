@@ -1,4 +1,5 @@
 lbi
 luac.out
+lua/luac.out
 lua/lua-5.4.7/*
 src/*.swp

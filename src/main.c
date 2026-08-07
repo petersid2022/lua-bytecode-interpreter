@@ -1,7 +1,7 @@
 #include <stdint.h>
 
-#include "instructions.h"
-#include "utils.h"
+#include "util.h"
+#include "vm.h"
 
 s_Arena arena;
 

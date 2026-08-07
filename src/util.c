@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "utils.h"
+#include "util.h"
 
 inline bool parse_command_line_args(int argc, char **argv) {
   struct stat buf;
