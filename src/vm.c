@@ -84,7 +84,7 @@ static inline void dump_luac_instructions(s_Func_Prototype *p) {
     uint32_t code = p->code[i];
     uint8_t opcode = code & 0x7F;
 
-    printf("\t%d\t", i);
+    printf("\t%d\t", i + 1);
 
     switch (opcode) {
     case OP_MOVE:
@@ -673,9 +673,6 @@ void run(s_String_Builder *contents) {
   parse_luac_bytecode(&sv, proto, false);
 
   for (int pc = 0; pc < proto->sizecode; pc++) {
-    // s_Upvalue_Desc *upvalues = proto->upvalues;
-    s_TValue *tagval = proto->tagval;
-
     uint32_t code = proto->code[pc];
     uint8_t opcode = code & 0x7F;
 
@@ -683,10 +680,40 @@ void run(s_String_Builder *contents) {
     case OP_VARARGPREP:
       break;
     case OP_GETTABUP:
-      // R[A] := UpValue[B][K[C]:shortstring]
       break;
+    case OP_SETTABUP:
+      break;
+    case OP_FORPREP: {
+      uint32_t A = GET_A(code);
+      uint32_t Bx = GET_Bx(code);
+
+      if ((memory[A + 2] > 0 && memory[A] > memory[A + 1]) || (memory[A + 2] < 0 && memory[A] < memory[A + 1])) {
+        pc += Bx;
+      }
+
+      break;
+    }
+    case OP_FORLOOP: {
+      uint32_t A = GET_A(code);
+      uint32_t Bx = GET_Bx(code);
+
+      memory[A] += memory[A + 2];
+
+      bool keep_looping = (memory[A + 2] > 0) ? (memory[A] <= memory[A + 1]) : (memory[A] >= memory[A + 1]);
+
+      if (keep_looping) {
+        memory[A + 3] = memory[A];
+        pc -= Bx;
+      }
+
+      break;
+    }
     case OP_MOVE: {
       memory[GET_A(code)] = memory[GET_B(code)];
+      break;
+    }
+    case OP_CLOSURE: {
+      // memory[GET_A(code)] = memory[GET_B(code)] + memory[GET_C(code)];
       break;
     }
     case OP_MMBIN: {
@@ -722,22 +749,27 @@ void run(s_String_Builder *contents) {
       if (index >= (uint32_t)proto->sizek) {
         break;
       }
-      const char *p = tagval[index].value_.p;
+
+      const char *p = proto->tagval[index].value_.p;
       if (!p) {
         break;
       }
+
       size_t bytes = strlen(p) + 1;
       size_t slots = (bytes + sizeof(memory[0]) - 1) / sizeof(memory[0]);
       size_t start = GET_A(code);
+
       if (slots > MEMORY_MAX - start) {
         break;
       }
+
       memset(&memory[start], 0, slots * sizeof(memory[0]));
       memcpy(&memory[start], p, bytes);
+
       break;
     }
     case OP_CALL:
-      printf("%d\n", *(memory + GET_A(code) + 1));
+      printf("%s\n", (char *)(memory + GET_A(code) + 1));
       break;
     case OP_RETURN:
       break;

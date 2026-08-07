@@ -8,6 +8,6 @@ function fib(n)
     end
 end
 
-for i = 1, 40 do
+for i = 1, 5 do
     print(fib(i))
 end
