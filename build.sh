@@ -2,9 +2,12 @@
 
 set -xe
 
-CC="clang"
+CC="gcc"
 LUAC="luac"
-CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -O0 -ggdb3 -fsanitize=address,undefined"
+CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -Wno-type-limits -O0 -ggdb3"
+if $CC -fsanitize=address,undefined -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+    CFLAGS="$CFLAGS -fsanitize=address,undefined"
+fi
 IFLAGS="-Isrc"
 SRC="./src/vm.c ./src/util.c ./src/main.c"
 BIN="./lbi"
